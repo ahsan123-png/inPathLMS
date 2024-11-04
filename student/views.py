@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.hashers import check_password
+from django.http import JsonResponse
 from .serializer import *
 from userEx.models import *
 # ============== CBV CURD =============== 
@@ -20,7 +21,6 @@ class StudentProfileView(APIView):
             try:
                 user = User.objects.select_related('userrole').get(pk=pk)
                 user_role = self.get_user_role(user)
-
                 if user_role is None or user_role.role != 'student':
                     return JsonResponse(
                         {"error": "The provided user ID does not belong to a student. Please provide a valid Student ID."},status=status.HTTP_400_BAD_REQUEST

@@ -4,7 +4,7 @@ from userEx.models import *
 class InstructorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstructorProfile
-        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture']
+        fields = ['bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture']
     def validate_user(self, user):
         try:
             user_role = UserRole.objects.get(user=user)
@@ -23,7 +23,7 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
         teaching_history = validated_data.get('teaching_history', '')
         profile_picture = validated_data.get('profile_picture', None)
         instructor_profile = InstructorProfile.objects.create(
-            user=user,
+            user=self.context['user'],
             bio=bio,
             degrees=degrees,
             teaching_experience=teaching_experience,
