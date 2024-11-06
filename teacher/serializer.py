@@ -43,4 +43,54 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    
+# ============ Serializer for Course =====================
+class CourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = '__all__'
+    def validate_course(self, value):
+        if not Course.objects.filter(id=value.id).exists():
+            raise serializers.ValidationError("Course with the given ID does not exist.")
+        return value
+
+# Serializer for Section
+class SectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Section
+        fields = '__all__'
+
+# Serializer for Lecture
+class LectureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lecture
+        fields = '__all__'
+
+# Serializer for Quiz
+class QuizSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quiz
+        fields = '__all__'
+
+# Serializer for Question
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = '__all__'
+
+# Serializer for Assignment
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+
+# Serializer for Feedback
+class FeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = '__all__'
+
+# Serializer for Enrollment (to manage course enrollment for students)
+class EnrollmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Enrollment
+        fields = '__all__'

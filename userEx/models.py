@@ -158,3 +158,20 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.username} - {self.notification_type}"
+# ============= Model for Course Updates ==================
+class Section(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField(max_length=255)  # e.g., "Introduction"
+    order = models.PositiveIntegerField()  # For ordering sections in the course
+
+    def __str__(self):
+        return f"{self.title} ({self.course.title})"
+
+class Lecture(models.Model):
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lectures')
+    title = models.CharField(max_length=255)
+    order = models.PositiveIntegerField() 
+    video_file = models.FileField(upload_to='lectures/videos/', null=True, blank=True) 
+
+    def __str__(self):
+        return f"{self.title} ({self.section.title})"
