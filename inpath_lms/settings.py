@@ -33,6 +33,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
 ]
 
 ROOT_URLCONF = 'inpath_lms.urls'
@@ -99,3 +100,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #         'rest_framework.authentication.TokenAuthentication',
 #     ],
 # }
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # Local development
+    'https://inpath.us',      # Production frontend
+]
