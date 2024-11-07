@@ -28,8 +28,8 @@ class SignupSerializer(serializers.ModelSerializer):
         role = validated_data['role']
         first_name = full_name.split()[0]
         last_name = ' '.join(full_name.split()[1:]) if len(full_name.split()) > 1 else ''
-        username = re.sub(r'\s+', '_', full_name.lower())
-        username += str(len(username))  
+        username_part = email.split('@')[0]
+        username = f"{username_part}_{len(email)}"  
         user = User.objects.create_user(
             username=username,
             email=email,
