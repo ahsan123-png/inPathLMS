@@ -85,6 +85,42 @@
     "teaching_experience": 10,
     "specialization": "Mathematics, Physics",
     "teaching_history": "Taught at XYZ University, ABC High School",
-    "profile_picture": "<imgFile>"
+}
+```
+
+
+## Get all Teacher Profile with user ID
+### URL: ```/teacher/all/profile/```
+##### Method: GET
+#### Body
+
+
+## Get a specific Teacher Profile with user ID
+### URL: ```/teacher/all/profile/<int:user_id>```
+##### Method: GET
+#### Body
+
+## Update Teacher Profile
+### URL: ```teacher/instructor-profile/create/```
+##### Method: PUT
+#### Body
+```json
+{
+    "bio": "demo update update",
+    "degrees": "PhD in Education, MSc in Mathematics help help",
+    "teaching_experience": 22,
+    "specialization": "Mathematics, Physics",
+    "teaching_history": "Taught at BBC University, ABC High School"
+}
+```
+
+## Upload Teacher Profile Image
+### URL: ```teacher//upload-profile-picture/```
+##### Method: POST
+#### Body
+```json
+{
+    "user_id": "int",
+    "profile_picture":"file"
 }
 ```
