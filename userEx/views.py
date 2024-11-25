@@ -12,6 +12,7 @@ class SignupAPIView(APIView):
             user = serializer.save()  # User is created
             token, created = Token.objects.get_or_create(user=user)
             return Response({
+                "user_id": user.id,
                 "message": "User registered successfully.",
                 "username": user.username,
                 "token": token.key,
@@ -28,6 +29,7 @@ class LoginAPIView(APIView):
             token, created = Token.objects.get_or_create(user=user)
             return Response({
                 "message": "Login successful.",
+                "user_id": user.id,
                 "token": token.key,
                 "role": user_role 
             }, status=status.HTTP_200_OK)
