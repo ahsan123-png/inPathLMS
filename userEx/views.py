@@ -24,9 +24,12 @@ class LoginAPIView(APIView):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
+            user_role = UserRole.objects.get(user=user).role
             token, created = Token.objects.get_or_create(user=user)
             return Response({
                 "message": "Login successful.",
-                "token": token.key
+                "token": token.key,
+                "role": user_role 
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
