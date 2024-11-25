@@ -17,5 +17,6 @@ urlpatterns = [
     path('profile/create/', InstructorProfileCreateView.as_view(), name='create_instructor_profile'),
     #crud
     path('all/profile/', InstructorProfileView.as_view(), name='instructor_profile_list_create'),
-    path('profile/<int:pk>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
+    path('profile/<int:user_id>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
+    path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
 ]

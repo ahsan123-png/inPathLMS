@@ -1,87 +1,134 @@
-from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.generics import CreateAPIView
 from django.http import JsonResponse
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
 from userEx.models import *
+from rest_framework.response import Response
+from rest_framework import status
 # =========== CBV ===================
 #=============== Create Profile  ======================
-# we have two ways to create profile 
-# By APIView
-# class InstructorProfileCreateView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     def post(self, request):
-#         serializer = InstructorProfileSerializer(data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({"message": "Instructor profile created successfully", "profile": serializer.data}, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#========= By CreateAPIView ====================
-class InstructorProfileCreateView(CreateAPIView):
-    queryset = InstructorProfile.objects.all()
-    serializer_class = InstructorProfileSerializer
+class InstructorProfileCreateView(APIView):
     # permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user')
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
+            return Response({"error": "User does not have the 'instructor' role"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = InstructorProfileSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 #============= Teacher CRUD =======================
 class InstructorProfileView(APIView):
     def get_user_role(self, user):
         try:
-            return UserRole.objects.select_related('user').get(user=user)
+            return UserRole.objects.get(user=user)
         except UserRole.DoesNotExist:
             return None
-    def get(self, request, pk=None):
-        if pk:
+    def get(self, request, user_id=None):
+        """Retrieve instructor profiles by user ID or list all instructors."""
+        if user_id:
             try:
-                profile = InstructorProfile.objects.get(pk=pk)
-                user_role = self.get_user_role(profile.user)
+                user = User.objects.get(id=user_id)
+                user_role = self.get_user_role(user)
                 if user_role is None or user_role.role != 'instructor':
-                    return JsonResponse({"error": "The provided user ID does not belong to an instructor. Please provide a valid Instructor ID."},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse(
+                        {"error": "The provided user ID does not belong to an instructor. Please provide a valid instructor ID."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                profile = InstructorProfile.objects.get(user=user)
                 serializer = InstructorProfileSerializer(profile)
                 return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+            except User.DoesNotExist:
+                return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
             except InstructorProfile.DoesNotExist:
-                return JsonResponse({"error": "Instructor not found."}, status=status.HTTP_404_NOT_FOUND)
+                return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
         else:
             profiles = InstructorProfile.objects.select_related('user').filter(user__userrole__role='instructor')
             serializer = InstructorProfileSerializer(profiles, many=True)
             return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
-    def put(self, request, pk):
+    def put(self, request, user_id):
+        """Update an instructor profile by user ID."""
         try:
-            profile = InstructorProfile.objects.get(pk=pk)
-            user_role = self.get_user_role(profile.user)
+            user = User.objects.get(id=user_id)
+            user_role = self.get_user_role(user)
             if user_role is None or user_role.role != 'instructor':
-                return JsonResponse({"error": "The provided user ID does not belong to an instructor. Please provide a valid Instructor ID."},
-                                    status=status.HTTP_400_BAD_REQUEST)
-            data = request.data
-            # Check if password needs to be updated
-            if 'password' in data:
-                old_password = data.get('old_password')
-                new_password = data.get('password')
-                if not profile.user.check_password(old_password):
-                    return JsonResponse({"error": "The old password is incorrect. Please provide the correct password."}, status=status.HTTP_400_BAD_REQUEST)
-                profile.user.set_password(new_password)
-                profile.user.save()
-            serializer = InstructorProfileSerializer(profile, data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse(
+                    {"error": "The provided user ID does not belong to an instructor. Please provide a valid instructor ID."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            profile = InstructorProfile.objects.get(user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         except InstructorProfile.DoesNotExist:
-            return JsonResponse({"error": "Instructor not found."}, status=status.HTTP_404_NOT_FOUND)
-    def delete(self, request, pk):
+            return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data
+        # Handle password update
+        if 'password' in data:
+            old_password = data.get('old_password')
+            new_password = data.get('password')
+            if not user.check_password(old_password):
+                return JsonResponse({"error": "The old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(new_password)
+            user.save()
+        # Update the profile using the serializer, excluding the user field
+        serializer = InstructorProfileSerializer(profile, data=data, partial=True)  # partial=True allows partial updates
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, user_id):
+        """Delete an instructor profile by user ID."""
         try:
-            profile = InstructorProfile.objects.get(pk=pk)
-            user_role = self.get_user_role(profile.user)
+            user = User.objects.get(id=user_id)
+            user_role = self.get_user_role(user)
             if user_role is None or user_role.role != 'instructor':
-                return JsonResponse({"error": "The provided user ID does not belong to an instructor. Please provide a valid Instructor ID."},
-                                    status=status.HTTP_400_BAD_REQUEST)
-            profile.user.delete()
-            return JsonResponse({"message": "Instructor profile deleted."}, status=status.HTTP_204_NO_CONTENT)
+                return JsonResponse(
+                    {"error": "The provided user ID does not belong to an instructor. Please provide a valid instructor ID."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            profile = InstructorProfile.objects.get(user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         except InstructorProfile.DoesNotExist:
-            return JsonResponse({"error": "Instructor not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user.delete()  # Deletes the user and cascades to delete the profile
+        return JsonResponse({"message": "Instructor profile deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+#============== Profile Image =============================
+class UploadProfilePictureView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self, request, *args, **kwargs):
+        """Upload or update the profile picture for the instructor."""
+        user_id = request.data.get('user_id')
+        profile_picture = request.data.get('profile_picture')
+        if not user_id or not profile_picture:
+            return JsonResponse({"error": "User ID and profile picture are required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
+            return JsonResponse({"error": "User does not have the 'instructor' role."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = InstructorProfile.objects.get(user=user)
+        except InstructorProfile.DoesNotExist:
+            return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        profile.profile_picture = profile_picture
+        profile.save()
+        serializer = InstructorProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 def get_instructor(user_id):
     try:
@@ -91,7 +138,6 @@ def get_instructor(user_id):
     if user.userrole.role != 'instructor':
         raise ValidationError("Only instructors can create courses or add content")
     return user
-
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
@@ -101,7 +147,6 @@ class CourseViewSet(viewsets.ModelViewSet):
             raise ValidationError("Instructor ID must be provided")
         user = get_instructor(user_id)
         serializer.save(instructor=user)
-
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
@@ -114,7 +159,6 @@ class SectionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add sections")
         serializer.save()
-
 class LectureViewSet(viewsets.ModelViewSet):
     queryset = Lecture.objects.all()
     serializer_class = LectureSerializer
