@@ -48,10 +48,10 @@ def dynamic_course_path(instance, filename):
     course_title = slugify(instance.title)
     ext = filename.split('.')[-1]
     if 'thumbnail' in filename:
-        return f'media/{instructor_name}/{course_title}_thumbnail.{ext}'
+        return f'{instructor_name}/{course_title}_thumbnail.{ext}'
     elif 'intro_video' in filename:
-        return f'media/{instructor_name}/{course_title}_intro_video.{ext}'
-    return f'media/{instructor_name}/{course_title}/{filename}'
+        return f'{instructor_name}/{course_title}_intro_video.{ext}'
+    return f'{instructor_name}/{course_title}/{filename}'
 #========== Model for Courses =================
 class Course(models.Model):
     title = models.CharField(max_length=200)
