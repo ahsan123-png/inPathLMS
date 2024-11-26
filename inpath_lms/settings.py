@@ -103,7 +103,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #         'rest_framework.authentication.TokenAuthentication',
 #     ],
 # }
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',  # Local development
-    'https://inpath.us',      # Production frontend
+# CORS_ALLOWED_ORIGINS = [
+#     'http://localhost:3000',  # Local development
+#     'https://inpath.us',      # Production frontend
+# ]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
 ]
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-requested-with',
+    'accept',
+    'origin',
+    'x-csrftoken',
+]
+CORS_ALLOW_CREDENTIALS = True
