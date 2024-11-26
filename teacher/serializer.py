@@ -26,10 +26,9 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = '__all__'
-    def validate_course(self, value):
-        if not Course.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError("Course with the given ID does not exist.")
-        return value
+    def validate(self, attrs):
+        # Remove validation for null values
+        return attrs
 
 # Serializer for Section
 class SectionSerializer(serializers.ModelSerializer):
