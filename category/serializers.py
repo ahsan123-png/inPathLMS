@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from userEx.models import *
-
+# Base Serializer
+class BaseModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ['id', 'name']
 # Category Serializer
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
