@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from time import timezone
+import os
+from django.utils.text import slugify
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -40,7 +42,16 @@ class SubCategory(models.Model):
 
     def __str__(self):
         return f"{self.category.name} - {self.name}"
-
+# ========= save name dynamically ===========
+def dynamic_course_path(instance, filename):
+    instructor_name = slugify(instance.instructor.username)
+    course_title = slugify(instance.title)
+    ext = filename.split('.')[-1]
+    if 'thumbnail' in filename:
+        return f'media/{instructor_name}/{course_title}_thumbnail.{ext}'
+    elif 'intro_video' in filename:
+        return f'media/{instructor_name}/{course_title}_intro_video.{ext}'
+    return f'media/{instructor_name}/{course_title}/{filename}'
 #========== Model for Courses =================
 class Course(models.Model):
     title = models.CharField(max_length=200)
@@ -50,11 +61,13 @@ class Course(models.Model):
     subcategory = models.ForeignKey('SubCategory', on_delete=models.CASCADE, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
-    discount_end_date = models.DateTimeField(null=True, blank=True)  # Optional discount expiry date
+    discount_end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published = models.BooleanField(default=False)
-
+    is_approved = models.BooleanField(default=False)
+    thumbnail = models.ImageField(upload_to=dynamic_course_path, null=True, blank=True)
+    intro_video = models.FileField(upload_to=dynamic_course_path, null=True, blank=True)
     def __str__(self):
         return self.title
 
@@ -62,7 +75,6 @@ class Course(models.Model):
         if self.discount_percentage and self.discount_end_date and self.discount_end_date > timezone.now():
             return self.price * (1 - (self.discount_percentage / 100))
         return self.price
-
 #================ Model for Enrollments ================
 class Enrollment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})

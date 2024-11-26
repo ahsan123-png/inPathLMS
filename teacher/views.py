@@ -146,7 +146,10 @@ class CourseViewSet(viewsets.ModelViewSet):
         if not user_id:
             raise ValidationError("Instructor ID must be provided")
         user = get_instructor(user_id)
-        serializer.save(instructor=user)
+        # Handle thumbnail and intro video file paths
+        thumbnail = self.request.FILES.get('thumbnail')
+        intro_video = self.request.FILES.get('intro_video')
+        serializer.save(instructor=user, thumbnail=thumbnail, intro_video=intro_video)
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
