@@ -19,4 +19,6 @@ urlpatterns = [
     path('all/profile/', InstructorProfileView.as_view(), name='instructor_profile_list_create'),
     path('profile/<int:user_id>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
     path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
+    path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
+
 ]

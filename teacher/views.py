@@ -235,3 +235,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if course.instructor == user:
             raise ValidationError("Instructors cannot enroll in their own course")
         serializer.save(user=user)
+
+# ============== get all courses by instructor id ==============
+class CourseByInstructorIdView(APIView):
+    def get(self,request,instructor_id):
+        courses=Course.objects.filter(instructor_id=instructor_id)
+        serializers=CourseSerializer(courses,many=True)
+        return Response(serializers.data)
+    
