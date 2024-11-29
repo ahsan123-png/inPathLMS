@@ -56,10 +56,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'inpath_lms.wsgi.application'
 # Database
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+# settings.py
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'viseLMS',
+        'USER': 'viseLMS',    
+        'PASSWORD': 'BolO5cwEPKLxm2rjUBK2',
+        'HOST': 'lmsdb.cbquw26eukq0.eu-north-1.rds.amazonaws.com',
+        'PORT': '3306',
     }
 }
 AUTH_PASSWORD_VALIDATORS = [

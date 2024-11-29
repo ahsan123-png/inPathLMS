@@ -238,8 +238,10 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
 # ============== get all courses by instructor id ==============
 class CourseByInstructorIdView(APIView):
-    def get(self,request,instructor_id):
-        courses=Course.objects.filter(instructor_id=instructor_id)
-        serializers=CourseSerializer(courses,many=True)
+    def get(self, request, instructor_id):
+        courses = Course.objects.filter(instructor_id=instructor_id)
+        if not courses.exists():
+            return Response({"error": "No courses found with this instructor ID."}, status=status.HTTP_404_NOT_FOUND)
+        serializers = CourseSerializer(courses, many=True)
         return Response(serializers.data)
     
