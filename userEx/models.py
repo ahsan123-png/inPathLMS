@@ -46,12 +46,14 @@ class SubCategory(models.Model):
 def dynamic_course_path(instance, filename):
     instructor_name = slugify(instance.instructor.username)
     course_title = slugify(instance.title)
-    ext = filename.split('.')[-1]
-    if 'thumbnail' in filename:
-        return f'{instructor_name}/{course_title}_thumbnail.{ext}'
-    elif 'intro_video' in filename:
-        return f'{instructor_name}/{course_title}_intro_video.{ext}'
-    return f'{instructor_name}/{course_title}/{filename}'
+    ext = os.path.splitext(filename)[-1].lower()
+    if 'thumbnail' in filename.lower():
+        new_filename = f"{course_title}_thumbnail{ext}"
+    elif 'intro_video' in filename.lower():
+        new_filename = f"{course_title}_intro_video{ext}"
+    else:
+        new_filename = f"{course_title}{ext}"
+    return f'{instructor_name}/{course_title}/{new_filename}'
 #========== Model for Courses =================
 class Course(models.Model):
     title = models.CharField(max_length=200)
