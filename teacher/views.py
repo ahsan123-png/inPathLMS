@@ -136,7 +136,7 @@ class UploadProfilePictureView(APIView):
         file_name = os.path.basename(profile_picture.name)
         file_key = f"instructor_profiles/{file_name}"
         try:
-            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}")
+            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}",ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type})
             file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
             profile.profile_picture = file_url
             profile.save()
