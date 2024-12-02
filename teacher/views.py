@@ -1,3 +1,5 @@
+import boto3
+from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,6 +12,8 @@ from .serializer import *
 from userEx.models import *
 from rest_framework.response import Response
 from rest_framework import status
+from django.conf import settings
+from django.core.files.storage import default_storage
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -109,9 +113,8 @@ class InstructorProfileView(APIView):
 class UploadProfilePictureView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     def post(self, request, *args, **kwargs):
-        """Upload or update the profile picture for the instructor."""
         user_id = request.data.get('user_id')
-        profile_picture = request.data.get('profile_picture')
+        profile_picture = request.FILES.get('profile_picture')
         if not user_id or not profile_picture:
             return JsonResponse({"error": "User ID and profile picture are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -124,12 +127,26 @@ class UploadProfilePictureView(APIView):
             profile = InstructorProfile.objects.get(user=user)
         except InstructorProfile.DoesNotExist:
             return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
-        profile.profile_picture = profile_picture
-        profile.save()
-        serializer = InstructorProfileSerializer(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        file_name = os.path.basename(profile_picture.name)
+        file_key = f"instructor_profiles/{file_name}"
+        try:
+            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}")
+            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
+            profile.profile_picture = file_url
+            profile.save()
+            return JsonResponse({
+                "user_id": user.id,
+                "profile_picture_url": file_url
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# =================== get instructors =================
 def get_instructor(user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -245,3 +262,35 @@ class CourseByInstructorIdView(APIView):
         serializers = CourseSerializer(courses, many=True)
         return Response(serializers.data)
     
+# ================== Get all sections with course iD =================
+class CourseSectionsView(View):
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.only('id', 'title').get(id=course_id)
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found."}, status=404)
+        sections = Section.objects.filter(course=course).prefetch_related(
+            'lectures'
+        ).order_by('order')
+        data = {
+            'course_id': course.id,
+            'course_title': course.title,
+            'sections': [
+                {
+                    'section_id': section.id,
+                    'section_title': section.title,
+                    'order': section.order,
+                    'lectures': [
+                        {
+                            'lecture_id': lecture.id,
+                            'lecture_title': lecture.title,
+                            'order': lecture.order,
+                            'video_file': lecture.video_file.url if lecture.video_file else None
+                        }
+                        for lecture in section.lectures.all().order_by('order')
+                    ]
+                }
+                for section in sections
+            ]
+        }
+        return JsonResponse(data, status=200)
