@@ -266,17 +266,12 @@ class CourseByInstructorIdView(APIView):
 class CourseSectionsView(View):
     def get(self, request, course_id):
         try:
-            # Ensure the course exists, fetching only necessary fields
             course = Course.objects.only('id', 'title').get(id=course_id)
         except Course.DoesNotExist:
             return JsonResponse({"error": "Course not found."}, status=404)
-
-        # Prefetch lectures related to the sections to optimize queries
         sections = Section.objects.filter(course=course).prefetch_related(
             'lectures'
         ).order_by('order')
-
-        # Prepare the response data
         data = {
             'course_id': course.id,
             'course_title': course.title,
