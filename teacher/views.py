@@ -1,4 +1,5 @@
 import boto3
+from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -261,3 +262,40 @@ class CourseByInstructorIdView(APIView):
         serializers = CourseSerializer(courses, many=True)
         return Response(serializers.data)
     
+# ================== Get all sections with course iD =================
+class CourseSectionsView(View):
+    def get(self, request, course_id):
+        try:
+            # Ensure the course exists, fetching only necessary fields
+            course = Course.objects.only('id', 'title').get(id=course_id)
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found."}, status=404)
+
+        # Prefetch lectures related to the sections to optimize queries
+        sections = Section.objects.filter(course=course).prefetch_related(
+            'lectures'
+        ).order_by('order')
+
+        # Prepare the response data
+        data = {
+            'course_id': course.id,
+            'course_title': course.title,
+            'sections': [
+                {
+                    'section_id': section.id,
+                    'section_title': section.title,
+                    'order': section.order,
+                    'lectures': [
+                        {
+                            'lecture_id': lecture.id,
+                            'lecture_title': lecture.title,
+                            'order': lecture.order,
+                            'video_file': lecture.video_file.url if lecture.video_file else None
+                        }
+                        for lecture in section.lectures.all().order_by('order')
+                    ]
+                }
+                for section in sections
+            ]
+        }
+        return JsonResponse(data, status=200)

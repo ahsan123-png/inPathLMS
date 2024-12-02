@@ -20,5 +20,6 @@ urlpatterns = [
     path('profile/<int:user_id>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
     path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
+     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
 
 ]
