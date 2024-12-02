@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import *
 
 router = DefaultRouter()
-router.register(r'courses', CourseViewSet)
+# router.register(r'courses', CourseViewSet)
 router.register(r'sections', SectionViewSet)
 router.register(r'lectures', LectureViewSet)
 router.register(r'quizzes', QuizViewSet)
@@ -21,5 +21,6 @@ urlpatterns = [
     path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
      path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
+     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),
 
 ]

@@ -136,7 +136,7 @@ class UploadProfilePictureView(APIView):
         file_name = os.path.basename(profile_picture.name)
         file_key = f"instructor_profiles/{file_name}"
         try:
-            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}")
+            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}",ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type})
             file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
             profile.profile_picture = file_url
             profile.save()
@@ -146,6 +146,22 @@ class UploadProfilePictureView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# =================== upload to S3 =================
+def upload_to_s3(file, file_name):
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_S3_REGION_NAME
+    )
+    bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+    file_key = f"media/{file_name}"
+    try:
+        s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
+    except Exception as e:
+        raise ValidationError(f"File upload to S3 failed: {str(e)}")
+    file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+    return file_url
 # =================== get instructors =================
 def get_instructor(user_id):
     try:
@@ -155,21 +171,39 @@ def get_instructor(user_id):
     if user.userrole.role != 'instructor':
         raise ValidationError("Only instructors can create courses or add content")
     return user
-class CourseViewSet(viewsets.ModelViewSet):
-    queryset = Course.objects.all()
-    serializer_class = CourseSerializer
-    def perform_create(self, serializer):
-        user_id = self.request.data.get('instructor')
+# ============== course View set =================
+class CourseCreateAPIView(APIView):
+    parser_classes = (MultiPartParser, FormParser)  # Handle file uploads
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('instructor')
         if not user_id:
             raise ValidationError("Instructor ID must be provided")
         user = get_instructor(user_id)
-        # Handle thumbnail and intro video file paths
-        thumbnail = self.request.FILES.get('thumbnail')
-        intro_video = self.request.FILES.get('intro_video')
-        serializer.save(instructor=user, thumbnail=thumbnail, intro_video=intro_video)
+        thumbnail = request.FILES.get('thumbnail')
+        intro_video = request.FILES.get('intro_video')
+        course = Course.objects.create(
+            instructor=user,
+            title=request.data.get('title'),
+            description=request.data.get('description'),
+            price=request.data.get('price'),
+            discount_percentage=request.data.get('discount_percentage'),
+            discount_end_date=request.data.get('discount_end_date'),
+            published=request.data.get('published', False),
+            category_id=request.data.get('category'),
+            subcategory_id=request.data.get('subcategory'),
+            thumbnail=thumbnail,  # Assign uploaded file directly
+            intro_video=intro_video  # Assign uploaded file directly
+        )
+        return Response({
+            "id": course.id,
+            "title": course.title,
+            "thumbnail": course.thumbnail.url if course.thumbnail else None,
+            "intro_video": course.intro_video.url if course.intro_video else None,
+        }, status=status.HTTP_201_CREATED)
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
-    serializer_class = SectionSerializer
+    def get_serializer_class(self):
+        return None
     def perform_create(self, serializer):
         course = serializer.validated_data['course']
         user_id = self.request.data.get('instructor')

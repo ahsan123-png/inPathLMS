@@ -108,7 +108,10 @@ AWS_SECRET_ACCESS_KEY = buketsSecrets.get('AWS_SECRET_ACCESS_KEY')
 # Optional: Set up a custom domain for your S3 bucket
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 AWS_S3_SIGNATURE_VERSION = 's3v4'  # Use version 4 signing (default)
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+if DEBUG:  # Local Development
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+else:  # Production (AWS S3)
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 # Assign S3 credentials to settings
 AWS_S3_CUSTOM_DOMAIN = AWS_S3_CUSTOM_DOMAIN
 AWS_ACCESS_KEY_ID = AWS_ACCESS_KEY_ID
