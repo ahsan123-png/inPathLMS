@@ -9,7 +9,9 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
+import random
 from userEx.models import *
+import re
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
@@ -147,7 +149,10 @@ class UploadProfilePictureView(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # =================== upload to S3 =================
-def upload_to_s3(file, file_name):
+def upload_to_s3(file, course_title, file_type):
+    unique_id = uuid.uuid4().hex[:8]  # Generates a unique 8-character ID
+    course_title_safe = re.sub(r'\W+', '_', course_title).lower()
+    file_name = f"{course_title_safe}_{unique_id}.{file.name.split('.')[-1]}"
     s3_client = boto3.client(
         's3',
         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -155,7 +160,7 @@ def upload_to_s3(file, file_name):
         region_name=settings.AWS_S3_REGION_NAME
     )
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-    file_key = f"media/{file_name}"  # Define the path in the S3 bucket
+    file_key = f"media/{file_type}/{file_name}"  # Path in S3
     try:
         s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
     except Exception as e:
@@ -175,18 +180,24 @@ def get_instructor(user_id):
 class CourseCreateAPIView(APIView):
     parser_classes = (MultiPartParser, FormParser)  # Handle file uploads
     def post(self, request, *args, **kwargs):
+        # Get instructor ID
         user_id = request.data.get('instructor')
         if not user_id:
             raise ValidationError("Instructor ID must be provided")
+        # Get instructor user
         user = get_instructor(user_id)
+        # Get files from request
         thumbnail = request.FILES.get('thumbnail')
         intro_video = request.FILES.get('intro_video')
+        # Get the course title for unique file naming
+        course_title = request.data.get('title')
+        # Upload the files to S3 and get their URLs
         thumbnail_url = None
         intro_video_url = None
         if thumbnail:
-            thumbnail_url = upload_to_s3(thumbnail, f"thumbnails/{thumbnail.name}")
+            thumbnail_url = upload_to_s3(thumbnail, course_title, "thumbnails")
         if intro_video:
-            intro_video_url = upload_to_s3(intro_video, f"intro_video/{intro_video.name}")
+            intro_video_url = upload_to_s3(intro_video, course_title, "intro_video")
         # Create Course object
         course = Course.objects.create(
             instructor=user,

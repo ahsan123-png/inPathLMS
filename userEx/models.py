@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from time import timezone
 import os
 from django.utils.text import slugify
+import uuid
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -48,11 +49,11 @@ def dynamic_course_path(instance, filename):
     course_title = slugify(instance.title)
     ext = os.path.splitext(filename)[-1].lower()
     if 'thumbnail' in filename.lower():
-        new_filename = f"{course_title}_thumbnail{ext}"
+        new_filename = f"{course_title}_thumbnail_{uuid.uuid4().hex[:8]}{ext}"
     elif 'intro_video' in filename.lower():
-        new_filename = f"{course_title}_intro_video{ext}"
+        new_filename = f"{course_title}_intro_video_{uuid.uuid4().hex[:8]}{ext}"
     else:
-        new_filename = f"{course_title}{ext}"
+        new_filename = f"{course_title}_{uuid.uuid4().hex[:8]}{ext}"
     return f'{instructor_name}/{course_title}/{new_filename}'
 #========== Model for Courses =================
 class Course(models.Model):
@@ -68,8 +69,8 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     published = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
-    thumbnail = models.ImageField(upload_to="thumbnails", null=True, blank=True)
-    intro_video = models.FileField(upload_to="intro_video", null=True, blank=True)
+    thumbnail = models.ImageField(upload_to=dynamic_course_path, null=True, blank=True)
+    intro_video = models.FileField(upload_to=dynamic_course_path, null=True, blank=True)
     def __str__(self):
         return self.title
 
