@@ -298,11 +298,7 @@ class SectionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add sections")
         serializer.save()
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
-from .models import Lecture, Section, Instructor
-from .utils import upload_to_s3  # Assuming upload_to_s3 function is in the utils file
+
 
 class LectureViewSet(APIView):
     def post(self, request, *args, **kwargs):
@@ -320,9 +316,12 @@ class LectureViewSet(APIView):
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
         try:
-            instructor = Instructor.objects.get(id=instructor_id)  # Assuming Instructor model exists
-        except Instructor.DoesNotExist:
-            raise ValidationError("Instructor not found")
+            user_role = UserRole.objects.get(id=instructor_id)
+            if user_role.role != 'instructor':
+                raise ValidationError("User is not an instructor")
+            instructor = InstructorProfile.objects.get(id=instructor_id)  # Assuming InstructorProfile exists
+        except (UserRole.DoesNotExist, InstructorProfile.DoesNotExist):
+            raise ValidationError("Instructor not found for this user")
         try:
             order = int(order)
         except ValueError:
