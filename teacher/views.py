@@ -300,19 +300,29 @@ class SectionViewSet(viewsets.ModelViewSet):
         serializer.save()
 class LectureViewSet(viewsets.ModelViewSet):
     queryset = Lecture.objects.all()
-    serializer_class = LectureSerializer
-    def perform_create(self, serializer):
-        section = serializer.validated_data['section']
+    def perform_create(self, request, *args, **kwargs):
+        section_id = request.data.get('section_id')
+        title = request.data.get('title')
+        instructor_id = request.data.get('instructor')
+        file = request.data.get('file')
+        if not section_id or not title or not instructor_id or not file:
+            raise ValidationError("Section, title, instructor, and file must be provided")
+        section = Section.objects.get(id=section_id)
         course = section.course
-        user_id = self.request.data.get('instructor')
-        if not user_id:
-            raise ValidationError("Instructor ID must be provided")
-        user = get_instructor(user_id)
-        if course.instructor != user:
+        instructor = get_instructor(instructor_id)
+        if course.instructor != instructor:
             raise ValidationError("Only the instructor of the course can add lectures")
-        serializer.save()
-
-
+        file_url = upload_to_s3(file, course.title, 'lectures')
+        lecture = Lecture.objects.create(
+            section=section,
+            title=title,
+            instructor=instructor,
+            file_url=file_url  # Assuming the model has a file_url field to store S3 URL
+        )
+        return Response({
+            "message": "Lecture created successfully",
+            "lecture": {"title": lecture.title, "file_url": lecture.file_url}
+        })
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
@@ -342,16 +352,31 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
-    serializer_class = AssignmentSerializer
-    def perform_create(self, serializer):
-        course = serializer.validated_data['course']
-        user_id = self.request.data.get('instructor')
-        if not user_id:
-            raise ValidationError("Instructor ID must be provided")
-        user = get_instructor(user_id)
-        if course.instructor != user:
+    def perform_create(self, request, *args, **kwargs):
+        course_id = request.data.get('course_id')
+        title = request.data.get('title')
+        instructor_id = request.data.get('instructor')
+        description = request.data.get('description')
+        file = request.data.get('file')
+        due_date = request.data.get('due_date')
+        if not course_id or not title or not instructor_id or not description or not due_date or not file:
+            raise ValidationError("Course, title, instructor, description, due_date, and file must be provided")
+        course = Course.objects.get(id=course_id)
+        instructor = get_instructor(instructor_id)
+        if course.instructor != instructor:
             raise ValidationError("Only the instructor of the course can add assignments")
-        serializer.save()
+        file_url = upload_to_s3(file, course.title, 'assignments')
+        assignment = Assignment.objects.create(
+            course=course,
+            title=title,
+            description=description,
+            due_date=due_date,
+            file_url=file_url 
+        )
+        return Response({
+            "message": "Assignment created successfully",
+            "assignment": {"title": assignment.title, "file_url": assignment.file_url}
+        })
 
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
