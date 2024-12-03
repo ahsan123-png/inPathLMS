@@ -68,8 +68,8 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     published = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
-    thumbnail = models.ImageField(upload_to=dynamic_course_path, null=True, blank=True)
-    intro_video = models.FileField(upload_to=dynamic_course_path, null=True, blank=True)
+    thumbnail = models.ImageField(upload_to="thumbnails", null=True, blank=True)
+    intro_video = models.FileField(upload_to="intro_video", null=True, blank=True)
     def __str__(self):
         return self.title
 
