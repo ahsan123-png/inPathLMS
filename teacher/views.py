@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.shortcuts import get_object_or_404
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -176,7 +177,7 @@ def get_instructor(user_id):
     if user.userrole.role != 'instructor':
         raise ValidationError("Only instructors can create courses or add content")
     return user
-# ============== course View set =================
+# ============== course Create View set =================
 class CourseCreateAPIView(APIView):
     parser_classes = (MultiPartParser, FormParser)  # Handle file uploads
     def post(self, request, *args, **kwargs):
@@ -219,6 +220,77 @@ class CourseCreateAPIView(APIView):
             "thumbnail": thumbnail_url,
             "intro_video": intro_video_url,
         }, status=status.HTTP_201_CREATED)
+# ============== upload contents like video or document ============
+class UploadContentView(APIView):
+    def post(self, request, *args, **kwargs):
+        content_type = request.data.get('content_type')  # 'lecture' or 'assignment'
+        section_id = request.data.get('section_id')
+        title = request.data.get('title')
+        file = request.FILES.get('file')
+        if not content_type or not file or not section_id or not title:
+            raise ValidationError("Content type, file, title, and section ID must be provided.")
+        if content_type == 'lecture':
+            instructor_id = request.data.get('instructor')
+            if not instructor_id:
+                raise ValidationError("Instructor ID must be provided.")
+            return self.handle_lecture_upload(section_id, title, file, instructor_id)
+        elif content_type == 'assignment':
+            return self.handle_assignment_upload(section_id, title, file, request.user)
+        else:
+            raise ValidationError("Invalid content type. Must be 'lecture' or 'assignment'.")
+    def handle_lecture_upload(self, section_id, title, file, instructor_id):
+        section = get_object_or_404(Section, id=section_id)
+        if section.course.instructor.id != int(instructor_id):
+            raise ValidationError("Only the instructor of the course can upload lectures.")
+        next_order = section.lectures.count() + 1
+        file_extension = file.name.split('.')[-1] 
+        file_path = f"lectures/{section_id}/{title.replace(' ', '_').lower()}.{file_extension}"
+        file_url = self.upload_to_s3(file, file_path)
+        lecture = Lecture.objects.create(
+            section=section,
+            title=title,
+            order=next_order,
+            video_file=file_url
+        )
+        return Response({
+            "message": "Lecture uploaded successfully.",
+            "lecture_id": lecture.id,
+            "section_id": section.id,
+            "file": lecture.video_file
+        }, status=status.HTTP_201_CREATED)
+    def handle_assignment_upload(self, section_id, title, file, user):
+        section = get_object_or_404(Section, id=section_id)
+        file_extension = file.name.split('.')[-1]  # Get the file extension
+        file_path = f"assignments/{section_id}/{title.replace(' ', '_').lower()}.{file_extension}"
+        file_url = self.upload_to_s3(file, file_path)
+        assignment_submission = AssignmentSubmission.objects.create(
+            assignment=Assignment.objects.filter(section=section).first(),
+            user=user,
+            submission_file=file_url
+        )
+        return Response({
+            "message": "Assignment submitted successfully.",
+            "submission_id": assignment_submission.id,
+            "section_id": section.id,
+            "file": assignment_submission.submission_file
+        }, status=status.HTTP_201_CREATED)
+    def upload_to_s3(self, file, file_path):
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        s3.upload_fileobj(
+            file,
+            bucket_name,
+            file_path,
+            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+        )
+        # Construct the public URL of the file
+        file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
+        return file_url
+# =================================================================
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     def get_serializer_class(self):
@@ -245,6 +317,7 @@ class LectureViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add lectures")
         serializer.save()
+
 
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
