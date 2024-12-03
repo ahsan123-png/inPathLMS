@@ -298,29 +298,58 @@ class SectionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add sections")
         serializer.save()
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
+from .models import Lecture, Section, Instructor
+from .utils import upload_to_s3  # Assuming upload_to_s3 function is in the utils file
+
 class LectureViewSet(APIView):
     def post(self, request, *args, **kwargs):
+        # Extracting data from the request
         section_id = request.data.get('section_id')
         title = request.data.get('title')
-        instructor_id = request.data.get('instructor')
-        file = request.data.get('file')
-        if not section_id or not title or not instructor_id or not file:
-            raise ValidationError("Section, title, instructor, and file must be provided")
-        section = Section.objects.get(id=section_id)
-        course = section.course
-        instructor = get_instructor(instructor_id)
-        if course.instructor != instructor:
-            raise ValidationError("Only the instructor of the course can add lectures")
-        file_url = upload_to_s3(file, course.title, 'lectures')
-        lecture = Lecture.objects.create(
-            section=section,
-            title=title,
-            instructor=instructor,
-            file_url=file_url  # Assuming the model has a file_url field to store S3 URL
-        )
+        order = request.data.get('order')
+        video_file = request.FILES.get('video_file')  # Use request.FILES for file uploads
+        instructor_id = request.data.get('instructor')  # The ID of the instructor
+        # Validation for required fields
+        if not section_id or not title or not order or not video_file or not instructor_id:
+            raise ValidationError("Section, title, order, video_file, and instructor must be provided")
+        try:
+            section = Section.objects.get(id=section_id)
+        except Section.DoesNotExist:
+            raise ValidationError("Section not found")
+        try:
+            instructor = Instructor.objects.get(id=instructor_id)  # Assuming Instructor model exists
+        except Instructor.DoesNotExist:
+            raise ValidationError("Instructor not found")
+        try:
+            order = int(order)
+        except ValueError:
+            raise ValidationError("Order must be an integer")
+        file_url = upload_to_s3(video_file, section.course.title, 'lectures')  # Upload the file and get URL
+        try:
+            lecture = Lecture.objects.create(
+                section=section,
+                title=title,
+                order=order,
+                video_file=video_file,  # This will store the file in the model directly
+                instructor=instructor  # Associate the lecture with the instructor
+            )
+        except Exception as e:
+            raise ValidationError(f"Error creating lecture: {e}")
         return Response({
             "message": "Lecture created successfully",
-            "lecture": {"title": lecture.title, "file_url": lecture.file_url}
+            "lecture": {
+                "id": lecture.id,
+                "title": lecture.title,
+                "video_file": file_url,  # Returning the file URL instead of the file object
+                "order": lecture.order,
+                "instructor": {
+                    "id": instructor.id,
+                    "name": instructor.name  # Adjust according to your instructor model
+                }
+            }
         })
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
