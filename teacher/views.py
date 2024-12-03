@@ -155,7 +155,7 @@ def upload_to_s3(file, file_name):
         region_name=settings.AWS_S3_REGION_NAME
     )
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-    file_key = f"media/{file_name}"
+    file_key = f"media/{file_name}"  # Define the path in the S3 bucket
     try:
         s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
     except Exception as e:
@@ -181,6 +181,13 @@ class CourseCreateAPIView(APIView):
         user = get_instructor(user_id)
         thumbnail = request.FILES.get('thumbnail')
         intro_video = request.FILES.get('intro_video')
+        thumbnail_url = None
+        intro_video_url = None
+        if thumbnail:
+            thumbnail_url = upload_to_s3(thumbnail, f"thumbnails/{thumbnail.name}")
+        if intro_video:
+            intro_video_url = upload_to_s3(intro_video, f"intro_video/{intro_video.name}")
+        # Create Course object
         course = Course.objects.create(
             instructor=user,
             title=request.data.get('title'),
@@ -191,14 +198,15 @@ class CourseCreateAPIView(APIView):
             published=request.data.get('published', False),
             category_id=request.data.get('category'),
             subcategory_id=request.data.get('subcategory'),
-            thumbnail=thumbnail,  # Assign uploaded file directly
-            intro_video=intro_video  # Assign uploaded file directly
+            thumbnail=thumbnail_url,  # Assign S3 URL to the thumbnail
+            intro_video=intro_video_url  # Assign S3 URL to the intro_video
         )
+        # Return response with course data
         return Response({
             "id": course.id,
             "title": course.title,
-            "thumbnail": course.thumbnail.url if course.thumbnail else None,
-            "intro_video": course.intro_video.url if course.intro_video else None,
+            "thumbnail": thumbnail_url,
+            "intro_video": intro_video_url,
         }, status=status.HTTP_201_CREATED)
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
