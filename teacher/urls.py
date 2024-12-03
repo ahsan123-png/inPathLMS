@@ -5,10 +5,10 @@ from .views import *
 router = DefaultRouter()
 # router.register(r'courses', CourseViewSet)
 router.register(r'sections', SectionViewSet)
-router.register(r'lectures', LectureViewSet)
+# router.register(r'lectures', LectureViewSet)
 router.register(r'quizzes', QuizViewSet)
 router.register(r'questions', QuestionViewSet)
-router.register(r'assignments', AssignmentViewSet)
+# router.register(r'assignments', AssignmentViewSet)
 router.register(r'feedbacks', FeedbackViewSet)
 router.register(r'enrollments', EnrollmentViewSet)
 urlpatterns = [
@@ -23,5 +23,7 @@ urlpatterns = [
     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
     path('api/upload-content/', UploadContentView.as_view(), name='upload_content'),
     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),
+    path('lectures/', LectureViewSet.as_view(), name='lecture-create'),
+    path('assignments/', AssignmentViewSet.as_view(), name='assignment-create'),
 
 ]
