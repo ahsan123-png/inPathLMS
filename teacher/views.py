@@ -179,27 +179,21 @@ def get_instructor(user_id):
     return user
 # ============== course Create View set =================
 class CourseCreateAPIView(APIView):
-    parser_classes = (MultiPartParser, FormParser)  # Handle file uploads
+    parser_classes = (MultiPartParser, FormParser)
     def post(self, request, *args, **kwargs):
-        # Get instructor ID
         user_id = request.data.get('instructor')
         if not user_id:
             raise ValidationError("Instructor ID must be provided")
-        # Get instructor user
         user = get_instructor(user_id)
-        # Get files from request
         thumbnail = request.FILES.get('thumbnail')
         intro_video = request.FILES.get('intro_video')
-        # Get the course title for unique file naming
         course_title = request.data.get('title')
-        # Upload the files to S3 and get their URLs
         thumbnail_url = None
         intro_video_url = None
         if thumbnail:
             thumbnail_url = upload_to_s3(thumbnail, course_title, "thumbnails")
         if intro_video:
             intro_video_url = upload_to_s3(intro_video, course_title, "intro_video")
-        # Create Course object
         course = Course.objects.create(
             instructor=user,
             title=request.data.get('title'),
@@ -210,10 +204,9 @@ class CourseCreateAPIView(APIView):
             published=request.data.get('published', False),
             category_id=request.data.get('category'),
             subcategory_id=request.data.get('subcategory'),
-            thumbnail=thumbnail_url,  # Assign S3 URL to the thumbnail
-            intro_video=intro_video_url  # Assign S3 URL to the intro_video
+            thumbnail=thumbnail_url,  
+            intro_video=intro_video_url  
         )
-        # Return response with course data
         return Response({
             "id": course.id,
             "title": course.title,
@@ -240,12 +233,11 @@ class UploadContentView(APIView):
             raise ValidationError("Invalid content type. Must be 'lecture' or 'assignment'.")
     def handle_lecture_upload(self, section_id, title, file, instructor_id):
         section = get_object_or_404(Section, id=section_id)
-        if section.course.instructor.id != int(instructor_id):
+        course = section.course
+        if course.instructor.id != int(instructor_id):
             raise ValidationError("Only the instructor of the course can upload lectures.")
         next_order = section.lectures.count() + 1
-        file_extension = file.name.split('.')[-1] 
-        file_path = f"lectures/{section_id}/{title.replace(' ', '_').lower()}.{file_extension}"
-        file_url = self.upload_to_s3(file, file_path)
+        file_url = self.upload_to_s3(file, f"lectures/{course.id}/{section_id}/{title}")
         lecture = Lecture.objects.create(
             section=section,
             title=title,
@@ -256,15 +248,17 @@ class UploadContentView(APIView):
             "message": "Lecture uploaded successfully.",
             "lecture_id": lecture.id,
             "section_id": section.id,
-            "file": lecture.video_file
+            "course_id": course.id,
+            "file_url": lecture.video_file
         }, status=status.HTTP_201_CREATED)
     def handle_assignment_upload(self, section_id, title, file, user):
         section = get_object_or_404(Section, id=section_id)
-        file_extension = file.name.split('.')[-1]  # Get the file extension
-        file_path = f"assignments/{section_id}/{title.replace(' ', '_').lower()}.{file_extension}"
-        file_url = self.upload_to_s3(file, file_path)
+        assignment = Assignment.objects.filter(course=section.course).first()
+        if not assignment:
+            raise ValidationError("No assignment found for the section's course.")
+        file_url = self.upload_to_s3(file, f"assignments/{assignment.course.id}/{section_id}/{title}")
         assignment_submission = AssignmentSubmission.objects.create(
-            assignment=Assignment.objects.filter(section=section).first(),
+            assignment=assignment,
             user=user,
             submission_file=file_url
         )
@@ -272,7 +266,8 @@ class UploadContentView(APIView):
             "message": "Assignment submitted successfully.",
             "submission_id": assignment_submission.id,
             "section_id": section.id,
-            "file": assignment_submission.submission_file
+            "course_id": section.course.id,
+            "file_url": assignment_submission.submission_file
         }, status=status.HTTP_201_CREATED)
     def upload_to_s3(self, file, file_path):
         s3 = boto3.client(
@@ -287,7 +282,6 @@ class UploadContentView(APIView):
             file_path,
             ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
         )
-        # Construct the public URL of the file
         file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
         return file_url
 # =================================================================
