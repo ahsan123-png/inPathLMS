@@ -222,7 +222,7 @@ class CourseCreateAPIView(APIView):
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     def get_serializer_class(self):
-        return None
+        return SectionSerializer
     def perform_create(self, serializer):
         course = serializer.validated_data['course']
         user_id = self.request.data.get('instructor')
