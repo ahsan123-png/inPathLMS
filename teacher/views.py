@@ -298,7 +298,7 @@ class SectionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add sections")
         serializer.save()
-class LectureViewSet(viewsets.ModelViewSet):
+class LectureViewSet(APIView):
     queryset = Lecture.objects.all()
     def perform_create(self, request, *args, **kwargs):
         section_id = request.data.get('section_id')
@@ -350,7 +350,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
             raise ValidationError("Only the instructor of the course can add questions")
         serializer.save()
 
-class AssignmentViewSet(viewsets.ModelViewSet):
+class AssignmentViewSet(APIView):
     queryset = Assignment.objects.all()
     def perform_create(self, request, *args, **kwargs):
         course_id = request.data.get('course_id')
