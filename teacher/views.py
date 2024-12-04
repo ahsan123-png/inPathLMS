@@ -424,7 +424,7 @@ class AssignmentViewSet(APIView):
             raise ValidationError(f"File upload to S3 failed: {str(e)}")
 
         # Return the public URL for the uploaded file
-        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
+        file_url = f"https://{file_path}"
         return file_url
 
     def generate_file_path(self, title, file_name):
