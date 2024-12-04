@@ -379,6 +379,7 @@ class AssignmentViewSet(APIView):
             raise ValidationError("Section not found")
         file_url = upload_to_s3(file, title, 'assignments')
         assignment = Assignment.objects.create(
+            section=section,
             title=title,
             description=description,
             doc_files=file_url 
