@@ -377,7 +377,8 @@ class AssignmentViewSet(APIView):
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
-        file_url = upload_to_s3(file, title, 'assignments')
+        file_path = f"assignments/{title}_{file.name}"
+        file_url = self.upload_to_s3(file, file_path)
         assignment = Assignment.objects.create(
             section=section,
             title=title,
@@ -385,10 +386,28 @@ class AssignmentViewSet(APIView):
             doc_files=file_url 
         )
         return Response({
-            "section":section.id,
+            "section": section.id,
             "message": "Assignment created successfully",
-            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files}
+            "assignment": {
+                "title": assignment.title,
+                "doc_files": assignment.doc_files
+            }
         })
+    def upload_to_s3(self, file, file_path):
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        s3.upload_fileobj(
+            file,
+            bucket_name,
+            file_path,
+            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+        )
+        file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
+        return file_url
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
