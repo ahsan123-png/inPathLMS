@@ -363,7 +363,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add questions")
         serializer.save()
-
+# =================== Assessment upload =================
 class AssignmentViewSet(APIView):
     def post(self, request, *args, **kwargs):
         section_id = request.data.get('section_id')
@@ -371,30 +371,20 @@ class AssignmentViewSet(APIView):
         order = request.data.get('order')
         description = request.data.get('description')
         file = request.FILES.get('file')  # Ensure file is coming from FILES
-
         if not title or not description or not file or not section_id:
             raise ValidationError("title, description, and file must be provided")
-
         try:
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
-
-        # Generate a unique file path
         file_path = self.generate_file_path(title, file.name)
-        print(file_path)
-
-        # Upload file to S3 and get the public URL
         file_url = self.upload_to_s3(file, file_path)
-        print(file_url)
-        # Store the public S3 URL in the database
         assignment = Assignment.objects.create(
             section=section,
             title=title,
             description=description,
             doc_files=file_url  # Store S3 URL, not file path
         )
-
         return Response({
             "section": section.id,
             "message": "Assignment created successfully",
@@ -403,9 +393,7 @@ class AssignmentViewSet(APIView):
                 "doc_files": assignment.doc_files  # Return S3 URL
             }
         })
-
     def upload_to_s3(self, file, file_path):
-        """Uploads the file to S3 and returns the public URL."""
         print(file_path)
         print(file)
         s3 = boto3.client(
@@ -415,7 +403,6 @@ class AssignmentViewSet(APIView):
             region_name=settings.AWS_S3_REGION_NAME
         )
         bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-
         try:
             s3.upload_fileobj(
                 file,
@@ -425,20 +412,14 @@ class AssignmentViewSet(APIView):
             )
         except Exception as e:
             raise ValidationError(f"File upload to S3 failed: {str(e)}")
-
-        # Return the public URL for the uploaded file
         file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
         print(file_url)
         return file_url
-
     def generate_file_path(self, title, file_name):
-        """Generate a unique and sanitized file path for S3."""
-        unique_id = uuid.uuid4().hex[:8]  # Generate a unique 8-character ID
-        sanitized_title = re.sub(r'\W+', '_', title).lower()  # Replace non-alphanumeric characters
-        sanitized_file_name = re.sub(r'\W+', '_', file_name).lower()  # Replace non-alphanumeric characters
-        file_extension = file_name.split('.')[-1]  # Extract the file extension
-
-        # Final S3 file path
+        unique_id = uuid.uuid4().hex[:8]
+        sanitized_title = re.sub(r'\W+', '_', title).lower()
+        sanitized_file_name = re.sub(r'\W+', '_', file_name).lower()
+        file_extension = file_name.split('.')[-1] 
         return f"assignments/{sanitized_title}_{unique_id}.{file_extension}"
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
