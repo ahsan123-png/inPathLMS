@@ -385,7 +385,7 @@ class AssignmentViewSet(APIView):
             doc_files=file_url 
         )
         return Response({
-            "section":section,
+            "section":section.id,
             "message": "Assignment created successfully",
             "assignment": {"title": assignment.title, "doc_files": assignment.doc_files}
         })
