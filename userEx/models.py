@@ -187,6 +187,5 @@ class Lecture(models.Model):
     title = models.CharField(max_length=255)
     order = models.PositiveIntegerField() 
     video_file = models.FileField(upload_to='lectures/videos/', null=True, blank=True) 
-
     def __str__(self):
         return f"{self.title} ({self.section.title})"

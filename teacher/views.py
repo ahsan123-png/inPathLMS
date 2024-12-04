@@ -306,34 +306,25 @@ class LectureViewSet(APIView):
         section_id = request.data.get('section_id')
         title = request.data.get('title')
         order = request.data.get('order')
-        video_file = request.FILES.get('video_file')  # Use request.FILES for file uploads
-        instructor_id = request.data.get('instructor')  # The ID of the instructor
+        video_file = request.FILES.get('video_file')
         # Validation for required fields
-        if not section_id or not title or not order or not video_file or not instructor_id:
+        if not section_id or not title or not order or not video_file:
             raise ValidationError("Section, title, order, video_file, and instructor must be provided")
         try:
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
         try:
-            user_role = UserRole.objects.get(id=instructor_id)
-            if user_role.role != 'instructor':
-                raise ValidationError("User is not an instructor")
-            instructor = InstructorProfile.objects.get(id=instructor_id)  # Assuming InstructorProfile exists
-        except (UserRole.DoesNotExist, InstructorProfile.DoesNotExist):
-            raise ValidationError("Instructor not found for this user")
-        try:
             order = int(order)
         except ValueError:
             raise ValidationError("Order must be an integer")
-        file_url = upload_to_s3(video_file, section.course.title, 'lectures')  # Upload the file and get URL
+        file_url = upload_to_s3(video_file, section.course.title, 'lectures')
         try:
             lecture = Lecture.objects.create(
                 section=section,
                 title=title,
                 order=order,
-                video_file=video_file,  # This will store the file in the model directly
-                instructor=instructor  # Associate the lecture with the instructor
+                video_file=video_file,
             )
         except Exception as e:
             raise ValidationError(f"Error creating lecture: {e}")
@@ -344,10 +335,6 @@ class LectureViewSet(APIView):
                 "title": lecture.title,
                 "video_file": file_url,  # Returning the file URL instead of the file object
                 "order": lecture.order,
-                "instructor": {
-                    "id": instructor.id,
-                    "name": instructor.name  # Adjust according to your instructor model
-                }
             }
         })
 class QuizViewSet(viewsets.ModelViewSet):
