@@ -324,7 +324,7 @@ class LectureViewSet(APIView):
                 section=section,
                 title=title,
                 order=order,
-                video_file=video_file,
+                video_file=file_url,
             )
         except Exception as e:
             raise ValidationError(f"Error creating lecture: {e}")
@@ -333,7 +333,7 @@ class LectureViewSet(APIView):
             "lecture": {
                 "id": lecture.id,
                 "title": lecture.title,
-                "video_file": file_url,  # Returning the file URL instead of the file object
+                "video_file": file_url,
                 "order": lecture.order,
             }
         })
