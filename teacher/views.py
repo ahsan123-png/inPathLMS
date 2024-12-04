@@ -417,7 +417,7 @@ class AssignmentViewSet(APIView):
             s3.upload_fileobj(
                 file,
                 bucket_name,
-                file_path,
+                
                 ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
             )
         except Exception as e:
