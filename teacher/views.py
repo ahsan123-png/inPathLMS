@@ -407,7 +407,7 @@ class AssignmentViewSet(APIView):
             ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
         )
         file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
-        return file_url
+        return file_path
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
