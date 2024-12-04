@@ -366,31 +366,23 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 class AssignmentViewSet(APIView):
     def post(self, request, *args, **kwargs):
-        course_id = request.data.get('course_id')
+        section_id = request.data.get('section_id')
         title = request.data.get('title')
-        instructor_id = request.data.get('instructor')
+        order = request.data.get('order')
         description = request.data.get('description')
         file = request.data.get('file')
-        due_date = request.data.get('due_date')
-        if not course_id or not title or not instructor_id or not description or not due_date or not file:
+        if not title or not description or not file:
             raise ValidationError("Course, title, instructor, description, due_date, and file must be provided")
-        course = Course.objects.get(id=course_id)
-        instructor = get_instructor(instructor_id)
-        if course.instructor != instructor:
-            raise ValidationError("Only the instructor of the course can add assignments")
-        file_url = upload_to_s3(file, course.title, 'assignments')
+        file_url = upload_to_s3(file, title, 'assignments')
         assignment = Assignment.objects.create(
-            course=course,
             title=title,
             description=description,
-            due_date=due_date,
-            file_url=file_url 
+            doc_files=file_url 
         )
         return Response({
             "message": "Assignment created successfully",
-            "assignment": {"title": assignment.title, "file_url": assignment.file_url}
+            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files}
         })
-
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer

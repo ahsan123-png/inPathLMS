@@ -125,28 +125,6 @@ class Response(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s response to {self.question}"
-#======== Model for Assignments =================
-class Assignment(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    due_date = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
-
-#========= Model for Assignment Submissions ===============
-class AssignmentSubmission(models.Model):
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
-    submission_file = models.FileField(upload_to='submissions/')
-    submitted_at = models.DateTimeField(auto_now_add=True)
-    grade = models.FloatField(null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.user.username}'s submission for {self.assignment.title}"
-
 #========= Model for Feedback ===============
 class Feedback(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -181,7 +159,28 @@ class Section(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.course.title})"
+#======== Model for Assignments =================
+class Assignment(models.Model):
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='assignment')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, max_length=250, null=True)
+    doc_files=models.FileField(upload_to='assignments/docs/', null=True, blank=True) 
+    # due_date = models.DateTimeField(blank=True, null=True)
+    # created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.title
+#========= Model for Assignment Submissions ===============
+class AssignmentSubmission(models.Model):
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
+    submission_file = models.FileField(upload_to='submissions/')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    grade = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s submission for {self.assignment.title}"
+# ============= Lecture upload =================
 class Lecture(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lectures')
     title = models.CharField(max_length=255)
