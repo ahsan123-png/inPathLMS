@@ -428,9 +428,9 @@ class AssignmentViewSet(APIView):
             )
         except Exception as e:
             raise ValidationError(f"File upload to S3 failed: {str(e)}")
-
-        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
-        return file_path
+        print(settings.AWS_S3_CUSTOM_DOMAIN)
+        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}"
+        return file_url
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
