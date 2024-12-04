@@ -371,7 +371,7 @@ class AssignmentViewSet(APIView):
         order = request.data.get('order')
         description = request.data.get('description')
         file = request.data.get('file')
-        if not title or not description or not file:
+        if not title or not description or not file or not section_id:
             raise ValidationError("Course, title, instructor, description, due_date, and file must be provided")
         file_url = upload_to_s3(file, title, 'assignments')
         assignment = Assignment.objects.create(
@@ -381,7 +381,8 @@ class AssignmentViewSet(APIView):
         )
         return Response({
             "message": "Assignment created successfully",
-            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files}
+            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files},
+            "section_id":section_id
         })
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
