@@ -113,67 +113,42 @@ class InstructorProfileView(APIView):
         user.delete()  # Deletes the user and cascades to delete the profile
         return JsonResponse({"message": "Instructor profile deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 #============== Profile Image =============================
-class AssignmentViewSet(APIView):
+class UploadProfilePictureView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
     def post(self, request, *args, **kwargs):
-        section_id = request.data.get('section_id')
-        title = request.data.get('title')
-        description = request.data.get('description')
-        file = request.FILES.get('file')  # Use request.FILES to handle file uploads
-
-        if not title or not description or not file or not section_id:
-            return Response({"error": "title, description, file, and section_id must be provided."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if the section exists
+        user_id = request.data.get('user_id')
+        profile_picture = request.FILES.get('profile_picture')
+        if not user_id or not profile_picture:
+            return JsonResponse({"error": "User ID and profile picture are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            section = Section.objects.get(id=section_id)
-        except Section.DoesNotExist:
-            return Response({"error": "Section not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Prepare S3 client
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
+            return JsonResponse({"error": "User does not have the 'instructor' role."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = InstructorProfile.objects.get(user=user)
+        except InstructorProfile.DoesNotExist:
+            return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
-
-        # Create a unique file name to avoid conflicts
-        original_file_name = os.path.splitext(file.name)[0]
-        file_extension = os.path.splitext(file.name)[1]
-        unique_file_name = f"{original_file_name}_{uuid.uuid4().hex[:8]}{file_extension}"
-        file_key = f"assignments/{unique_file_name}"
-
-        # Upload the file to S3
+        file_name = os.path.basename(profile_picture.name)
+        file_key = f"instructor_profiles/{file_name}"
         try:
-            s3.upload_fileobj(
-                file,
-                settings.AWS_STORAGE_BUCKET_NAME,
-                file_key,
-                ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
-            )
-            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
-
-            # Save assignment to the database
-            assignment = Assignment.objects.create(
-                section=section,
-                title=title,
-                description=description,
-                doc_files=file_url  # Save S3 URL directly to the database
-            )
-
-            return Response({
-                "section": section.id,
-                "message": "Assignment created successfully",
-                "assignment": {
-                    "title": assignment.title,
-                    "description": assignment.description,
-                    "doc_files": assignment.doc_files
-                }
-            }, status=status.HTTP_201_CREATED)
+            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}",ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type})
+            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
+            profile.profile_picture = file_url
+            profile.save()
+            return JsonResponse({
+                "user_id": user.id,
+                "profile_picture_url": file_url
+            }, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": f"Failed to upload file: {str(e)}"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # =================== upload to S3 =================
 def upload_to_s3(file, course_title, file_type):
     unique_id = uuid.uuid4().hex[:8]  # Generates a unique 8-character ID
@@ -393,59 +368,63 @@ class AssignmentViewSet(APIView):
     def post(self, request, *args, **kwargs):
         section_id = request.data.get('section_id')
         title = request.data.get('title')
-        order = request.data.get('order')
         description = request.data.get('description')
-        file = request.FILES.get('file')  # Ensure file is coming from FILES
+        file = request.FILES.get('file')  # Use request.FILES to handle file uploads
+
         if not title or not description or not file or not section_id:
-            raise ValidationError("title, description, and file must be provided")
+            return Response({"error": "title, description, file, and section_id must be provided."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the section exists
         try:
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
-            raise ValidationError("Section not found")
-        file_path = self.generate_file_path(title, file.name)
-        file_url = self.upload_to_s3(file, file_path)
-        assignment = Assignment.objects.create(
-            section=section,
-            title=title,
-            description=description,
-            doc_files=file_url  # Store S3 URL, not file path
-        )
-        return Response({
-            "section": section.id,
-            "message": "Assignment created successfully",
-            "assignment": {
-                "title": assignment.title,
-                "doc_files": assignment.doc_files  # Return S3 URL
-            }
-        })
-    def upload_to_s3(self, file, file_path):
-        print(file_path)
-        print(file)
+            return Response({"error": "Section not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Prepare S3 client
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
-        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+
+        # Create a unique file name to avoid conflicts
+        original_file_name = os.path.splitext(file.name)[0]
+        file_extension = os.path.splitext(file.name)[1]
+        unique_file_name = f"{original_file_name}_{uuid.uuid4().hex[:8]}{file_extension}"
+        file_key = f"assignments/{unique_file_name}"
+
+        # Upload the file to S3
         try:
             s3.upload_fileobj(
                 file,
-                bucket_name,
-                file_path,
+                settings.AWS_STORAGE_BUCKET_NAME,
+                file_key,
                 ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
             )
+            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+
+            # Save assignment to the database
+            assignment = Assignment.objects.create(
+                section=section,
+                title=title,
+                description=description,
+                doc_files=file_url  # Save S3 URL directly to the database
+            )
+
+            return Response({
+                "section": section.id,
+                "message": "Assignment created successfully",
+                "assignment": {
+                    "title": assignment.title,
+                    "description": assignment.description,
+                    "doc_files": assignment.doc_files
+                }
+            }, status=status.HTTP_201_CREATED)
         except Exception as e:
-            raise ValidationError(f"File upload to S3 failed: {str(e)}")
-        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
-        print(file_url)
-        return file_url
-    def generate_file_path(self, title, file_name):
-        unique_id = uuid.uuid4().hex[:8]
-        sanitized_title = re.sub(r'\W+', '_', title).lower()
-        sanitized_file_name = re.sub(r'\W+', '_', file_name).lower()
-        file_extension = file_name.split('.')[-1] 
-        return f"assignments/{sanitized_title}_{unique_id}.{file_extension}"
+            return Response({"error": f"Failed to upload file: {str(e)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
