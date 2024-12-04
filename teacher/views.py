@@ -368,9 +368,8 @@ class AssignmentViewSet(APIView):
     def post(self, request, *args, **kwargs):
         section_id = request.data.get('section_id')
         title = request.data.get('title')
-        order = request.data.get('order')
         description = request.data.get('description')
-        file = request.FILES.get('file')  # Get file from request.FILES
+        file = request.FILES.get('file')  # Use request.FILES for file upload
 
         # Validate required fields
         if not title or not description or not file or not section_id:
@@ -382,12 +381,15 @@ class AssignmentViewSet(APIView):
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
 
-        # Sanitize and create a unique file path
-        sanitized_file_name = re.sub(r'\s+', '_', file.name)  # Replace spaces with underscores
-        sanitized_file_name = re.sub(r'[^\w\-_\.]', '_', sanitized_file_name)  # Replace special chars
-        file_path = f"assignments/{title}_{sanitized_file_name}"
+        # Sanitize title and file name
+        sanitized_title = re.sub(r'\W+', '_', title.strip())  # Replace non-word characters with underscores
+        sanitized_file_name = re.sub(r'\W+', '_', file.name.strip())  # Replace non-word characters with underscores
 
-        # Upload file to S3
+        # Ensure uniqueness of the file name with UUID
+        unique_id = uuid.uuid4().hex[:8]  # Generate a unique 8-character ID
+        file_path = f"assignments/{sanitized_title}_{unique_id}_{sanitized_file_name}"
+
+        # Upload the file to S3
         file_url = self.upload_to_s3(file, file_path)
 
         # Create assignment
@@ -413,8 +415,10 @@ class AssignmentViewSet(APIView):
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
         )
         bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+
         try:
             s3.upload_fileobj(
                 file,
@@ -424,9 +428,9 @@ class AssignmentViewSet(APIView):
             )
         except Exception as e:
             raise ValidationError(f"File upload to S3 failed: {str(e)}")
-        
-        file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
-        return file_path
+
+        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
+        return file_url
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
