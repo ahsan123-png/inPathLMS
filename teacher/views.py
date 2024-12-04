@@ -370,21 +370,35 @@ class AssignmentViewSet(APIView):
         title = request.data.get('title')
         order = request.data.get('order')
         description = request.data.get('description')
-        file = request.data.get('file')
+        file = request.FILES.get('file')  # Get file from request.FILES
+
+        # Validate required fields
         if not title or not description or not file or not section_id:
-            raise ValidationError("title, description and file must be provided")
+            raise ValidationError("title, description, file, and section_id must be provided")
+
+        # Check if section exists
         try:
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
             raise ValidationError("Section not found")
-        file_path = f"assignments/{title}_{file.name}"
-        file_url = upload_to_s3(file, title, 'assignments')
+
+        # Sanitize and create a unique file path
+        sanitized_file_name = re.sub(r'\s+', '_', file.name)  # Replace spaces with underscores
+        sanitized_file_name = re.sub(r'[^\w\-_\.]', '_', sanitized_file_name)  # Replace special chars
+        file_path = f"assignments/{title}_{sanitized_file_name}"
+
+        # Upload file to S3
+        file_url = self.upload_to_s3(file, file_path)
+
+        # Create assignment
         assignment = Assignment.objects.create(
             section=section,
             title=title,
             description=description,
-            doc_files=file_url 
+            doc_files=file_url
         )
+
+        # Return response
         return Response({
             "section": section.id,
             "message": "Assignment created successfully",
@@ -393,6 +407,26 @@ class AssignmentViewSet(APIView):
                 "doc_files": assignment.doc_files
             }
         })
+
+    def upload_to_s3(self, file, file_path):
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        try:
+            s3.upload_fileobj(
+                file,
+                bucket_name,
+                file_path,
+                ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+            )
+        except Exception as e:
+            raise ValidationError(f"File upload to S3 failed: {str(e)}")
+        
+        file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
+        return file_path
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
