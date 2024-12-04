@@ -384,9 +384,9 @@ class AssignmentViewSet(APIView):
             doc_files=file_url 
         )
         return Response({
+            "section":section,
             "message": "Assignment created successfully",
-            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files},
-            "section":section
+            "assignment": {"title": assignment.title, "doc_files": assignment.doc_files}
         })
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
