@@ -382,10 +382,11 @@ class AssignmentViewSet(APIView):
 
         # Generate a unique file path
         file_path = self.generate_file_path(title, file.name)
+        print(file_path)
 
         # Upload file to S3 and get the public URL
         file_url = self.upload_to_s3(file, file_path)
-
+        print(file_url)
         # Store the public S3 URL in the database
         assignment = Assignment.objects.create(
             section=section,
@@ -405,6 +406,8 @@ class AssignmentViewSet(APIView):
 
     def upload_to_s3(self, file, file_path):
         """Uploads the file to S3 and returns the public URL."""
+        print(file_path)
+        print(file)
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -417,14 +420,15 @@ class AssignmentViewSet(APIView):
             s3.upload_fileobj(
                 file,
                 bucket_name,
-                
+                file_path,
                 ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
             )
         except Exception as e:
             raise ValidationError(f"File upload to S3 failed: {str(e)}")
 
         # Return the public URL for the uploaded file
-        file_url = f"https://{file_path}"
+        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
+        print(file_url)
         return file_url
 
     def generate_file_path(self, title, file_name):
