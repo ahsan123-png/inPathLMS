@@ -4,6 +4,7 @@ from time import timezone
 import os
 from django.utils.text import slugify
 import uuid
+from django.conf import settings
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -164,7 +165,7 @@ class Assignment(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='assignment')
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, max_length=250, null=True)
-    doc_files=models.FileField(upload_to='assignments/docs/', null=True, blank=True) 
+    doc_files = models.URLField(null=True, blank=True)
     # due_date = models.DateTimeField(blank=True, null=True)
     # created_at = models.DateTimeField(auto_now_add=True)
 
@@ -176,8 +177,7 @@ class AssignmentSubmission(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
     submission_file = models.FileField(upload_to='submissions/')
     submitted_at = models.DateTimeField(auto_now_add=True)
-    grade = models.FloatField(null=True, blank=True)
-
+    grade = models.FloatField(null=True, blank=True)    
     def __str__(self):
         return f"{self.user.username}'s submission for {self.assignment.title}"
 # ============= Lecture upload =================
@@ -185,6 +185,10 @@ class Lecture(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lectures')
     title = models.CharField(max_length=255)
     order = models.PositiveIntegerField() 
-    video_file = models.FileField(upload_to='lectures/videos/', null=True, blank=True) 
-    def __str__(self):
-        return f"{self.title} ({self.section.title})"
+    video_file = models.CharField(max_length=500,blank=True,null=True,default="null")  # Store file path or URL
+    @property
+    def video_file_url(self):
+        if self.video_file.startswith("http"):
+            # If it's already a full URL, return as is
+            return self.video_file
+        return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{self.video_file}"

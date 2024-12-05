@@ -38,9 +38,12 @@ class SectionSerializer(serializers.ModelSerializer):
 
 # Serializer for Lecture
 class LectureSerializer(serializers.ModelSerializer):
+    video_file_url = serializers.SerializerMethodField()
     class Meta:
         model = Lecture
-        fields = '__all__'
+        fields = ['id', 'section', 'title', 'video_file', 'video_file_url']
+    def get_video_file_url(self, obj):
+        return obj.video_file_url
 
 # Serializer for Quiz
 class QuizSerializer(serializers.ModelSerializer):
