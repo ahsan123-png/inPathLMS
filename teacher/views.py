@@ -454,9 +454,11 @@ class CourseSectionsView(View):
             course = Course.objects.only('id', 'title').get(id=course_id)
         except Course.DoesNotExist:
             return JsonResponse({"error": "Course not found."}, status=404)
+
         sections = Section.objects.filter(course=course).prefetch_related(
-            'lectures'
+            'lectures', 'assignment'
         ).order_by('order')
+
         data = {
             'course_id': course.id,
             'course_title': course.title,
@@ -473,6 +475,15 @@ class CourseSectionsView(View):
                             'video_file': lecture.video_file.url if lecture.video_file else None
                         }
                         for lecture in section.lectures.all().order_by('order')
+                    ],
+                    'assignments': [
+                        {
+                            'assignment_id': assignment.id,
+                            'assignment_title': assignment.title,
+                            'description': assignment.description,
+                            'doc_files': assignment.doc_files.url if assignment.doc_files else None
+                        }
+                        for assignment in section.assignment.all().order_by('id')
                     ]
                 }
                 for section in sections
