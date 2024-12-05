@@ -1,10 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
-from time import timezone
+from django.utils import timezone
 import os
 from django.utils.text import slugify
 import uuid
 from django.conf import settings
+from decimal import Decimal
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -70,14 +71,16 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     published = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
-    thumbnail = models.ImageField(upload_to=dynamic_course_path, null=True, blank=True)
-    intro_video = models.FileField(upload_to=dynamic_course_path, null=True, blank=True)
+    thumbnail = models.URLField(null=True, blank=True)  # Store S3 URL
+    intro_video = models.URLField(null=True, blank=True)
     def __str__(self):
         return self.title
 
     def get_discounted_price(self):
+    # Ensure discount_percentage is a Decimal type
+        discount_percentage = Decimal(self.discount_percentage)
         if self.discount_percentage and self.discount_end_date and self.discount_end_date > timezone.now():
-            return self.price * (1 - (self.discount_percentage / 100))
+            return self.price * (1 - (discount_percentage / 100))
         return self.price
 #================ Model for Enrollments ================
 class Enrollment(models.Model):

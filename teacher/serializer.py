@@ -23,12 +23,13 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
 
 # ============ Serializer for Course =====================
 class CourseSerializer(serializers.ModelSerializer):
+    final_price = serializers.SerializerMethodField()
     class Meta:
         model = Course
-        fields = '__all__'
-    def validate(self, attrs):
-        # Remove validation for null values
-        return attrs
+        fields = "__all__"
+    def get_final_price(self, obj):
+        return obj.get_discounted_price()
+
 
 # Serializer for Section
 class SectionSerializer(serializers.ModelSerializer):

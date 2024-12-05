@@ -15,8 +15,9 @@ import re
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-from django.core.files.storage import default_storage
-from django.shortcuts import get_object_or_404
+from datetime import datetime
+from django.utils.timezone import make_aware
+from decimal import Decimal
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -189,34 +190,84 @@ def get_instructor(user_id):
     return user
 # ============== course Create View set =================
 class CourseCreateAPIView(APIView):
-    def list(self, request):
-        lectures = Lecture.objects.all()
-        serializer = LectureSerializer(lectures, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    # Retrieve a single lecture
-    def retrieve(self, request, pk=None):
-        try:
-            lecture = Lecture.objects.get(pk=pk)
-            serializer = LectureSerializer(lecture)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Lecture.DoesNotExist:
-            return Response({"error": "Lecture not found"}, status=status.HTTP_404_NOT_FOUND)
-    def create(self, request):
-        section = request.data.get('section')
-        title = request.data.get('title')
-        order = request.data.get('order')
-        video_file = request.FILES.get('video_file')
-        if not all([section, title, order, video_file]):
-            return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
-        file_path = upload_to_s3(video_file, 'lectures')
-        # Save the lecture instance in the database
-        lecture = Lecture.objects.create(
-            section_id=section,
-            title=title,
-            order=order,
-            video_file=file_path
+    def generate_file_path(self, directory, file_name):
+        # Generate a unique file path for storing in S3
+        unique_id = uuid.uuid4().hex[:8]
+        sanitized_file_name = re.sub(r'\s+', '_', file_name) 
+        sanitized_file_name = re.sub(r'\W+', '_', sanitized_file_name) 
+        file_extension = file_name.split('.')[-1] 
+        file_path = f"{directory}/{unique_id}_{sanitized_file_name.lower()}"
+        return file_path
+    def upload_to_s3(self, file, file_path):
+        # Initialize the S3 client
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
         )
-        serializer = LectureSerializer(lecture)
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        try:
+            s3.upload_fileobj(
+                file,
+                bucket_name,
+                file_path,
+                ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+            )
+        except Exception as e:
+            raise ValidationError(f"File upload to S3 failed: {str(e)}")
+        # Generating the S3 URL
+        s3_url = f"https://{bucket_name}.s3.amazonaws.com/{file_path}"
+        return s3_url
+    def post(self, request):
+        title = request.data.get('title')
+        description = request.data.get('description')
+        instructor = request.data.get('instructor')
+        category = request.data.get('category')
+        subcategory = request.data.get('subcategory')
+        price = request.data.get('price')
+        discount_percentage = request.data.get('discount_percentage', 0)
+        discount_end_date = request.data.get('discount_end_date')
+        published = request.data.get('published', False)
+        thumbnail = request.FILES.get('thumbnail')
+        intro_video = request.FILES.get('intro_video')
+        discount_percentage = Decimal(discount_percentage)
+        price = Decimal(price)
+        if not all([title, description, instructor, category, price]):
+            return Response({"error": "All required fields must be provided."}, status=status.HTTP_400_BAD_REQUEST)
+        discount_end_date_obj = None
+        if discount_end_date:
+            try:
+                discount_end_date_obj = make_aware(
+                    datetime.strptime(discount_end_date, '%Y-%m-%dT%H:%M:%SZ')
+                )
+            except ValueError:
+                return Response({"error": "Invalid discount_end_date format. Use ISO 8601 format (e.g., 2024-12-31T23:59:59Z)."},
+                                status=status.HTTP_400_BAD_REQUEST)
+        if thumbnail:
+            thumbnail_file_path = self.generate_file_path('courses', thumbnail.name)
+            thumbnail_url = self.upload_to_s3(thumbnail, thumbnail_file_path)
+        else:
+            thumbnail_url = None
+        if intro_video:
+            intro_video_file_path = self.generate_file_path('lectures', intro_video.name)
+            intro_video_url = self.upload_to_s3(intro_video, intro_video_file_path)
+        else:
+            intro_video_url = None
+        course = Course.objects.create(
+            title=title,
+            description=description,
+            instructor_id=instructor,
+            category_id=category,
+            subcategory_id=subcategory,
+            price=price,
+            discount_percentage=discount_percentage,
+            discount_end_date=discount_end_date_obj,
+            published=published,
+            thumbnail=thumbnail_url,
+            intro_video=intro_video_url
+        )
+        serializer = CourseSerializer(course)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 # ============== upload contents like video or document ============
 
