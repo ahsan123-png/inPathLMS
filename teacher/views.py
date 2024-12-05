@@ -301,7 +301,8 @@ class AssignmentViewSet(APIView):
         description = request.data.get('description')
         file = request.FILES.get('file')  # Ensure file is coming from FILES
         if not title or not description or not file or not section_id:
-            raise ValidationError("title, description, and file must be provided")
+            raise ValidationError("All fields are required: title, description, file, and section_id")
+
         try:
             section = Section.objects.get(id=section_id)
         except Section.DoesNotExist:
@@ -312,17 +313,18 @@ class AssignmentViewSet(APIView):
             section=section,
             title=title,
             description=description,
-            doc_files=file_url  # Store S3 URL, not file path
+            doc_files=file_url
         )
         return Response({
             "section": section.id,
             "message": "Assignment created successfully",
             "assignment": {
                 "title": assignment.title,
-                "doc_files": assignment.doc_files  # Return S3 URL
+                "doc_files": assignment.doc_files 
             }
         })
     def upload_to_s3(self, file, file_path):
+        # Initialize the S3 client
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -342,6 +344,7 @@ class AssignmentViewSet(APIView):
         file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_path}"
         return file_url
     def generate_file_path(self, title, file_name):
+        # Generate a unique file path for storing in S3
         unique_id = uuid.uuid4().hex[:8]
         sanitized_title = re.sub(r'\W+', '_', title).lower()
         sanitized_file_name = re.sub(r'\W+', '_', file_name).lower()
@@ -383,11 +386,9 @@ class CourseSectionsView(View):
             course = Course.objects.only('id', 'title').get(id=course_id)
         except Course.DoesNotExist:
             return JsonResponse({"error": "Course not found."}, status=404)
-
         sections = Section.objects.filter(course=course).prefetch_related(
             'lectures', 'assignment'
         ).order_by('order')
-
         data = {
             'course_id': course.id,
             'course_title': course.title,
@@ -401,7 +402,7 @@ class CourseSectionsView(View):
                             'lecture_id': lecture.id,
                             'lecture_title': lecture.title,
                             'order': lecture.order,
-                            'video_file': lecture.video_file.url if lecture.video_file else None
+                            'video_file': lecture.video_file  # Directly return the URL stored in CharField
                         }
                         for lecture in section.lectures.all().order_by('order')
                     ],
@@ -410,7 +411,7 @@ class CourseSectionsView(View):
                             'assignment_id': assignment.id,
                             'assignment_title': assignment.title,
                             'description': assignment.description,
-                            'doc_files': assignment.doc_files.url if assignment.doc_files else None
+                            'doc_files': assignment.doc_files  # Directly return the URL stored in CharField
                         }
                         for assignment in section.assignment.all().order_by('id')
                     ]

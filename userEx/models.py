@@ -165,7 +165,7 @@ class Assignment(models.Model):
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='assignment')
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, max_length=250, null=True)
-    doc_files=models.FileField(upload_to='assignments/docs/', null=True, blank=True) 
+    doc_files = models.URLField(null=True, blank=True)
     # due_date = models.DateTimeField(blank=True, null=True)
     # created_at = models.DateTimeField(auto_now_add=True)
 
@@ -177,8 +177,7 @@ class AssignmentSubmission(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
     submission_file = models.FileField(upload_to='submissions/')
     submitted_at = models.DateTimeField(auto_now_add=True)
-    grade = models.FloatField(null=True, blank=True)
-        
+    grade = models.FloatField(null=True, blank=True)    
     def __str__(self):
         return f"{self.user.username}'s submission for {self.assignment.title}"
 # ============= Lecture upload =================
