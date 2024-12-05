@@ -21,9 +21,8 @@ urlpatterns = [
     path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
-    path('api/upload-content/', UploadContentView.as_view(), name='upload_content'),
     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),
-    path('lectures/', LectureViewSet.as_view(), name='lecture-create'),
+    path('lectures/', LectureViewSet.as_view({'get': 'list', 'post': 'create'}), name='lecture-create'),
     path('assignments/', AssignmentViewSet.as_view(), name='assignment-create'),
 
 ]

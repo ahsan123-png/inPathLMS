@@ -150,24 +150,34 @@ class UploadProfilePictureView(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # =================== upload to S3 =================
-def upload_to_s3(file, course_title, file_type):
-    unique_id = uuid.uuid4().hex[:8]  # Generates a unique 8-character ID
-    course_title_safe = re.sub(r'\W+', '_', course_title).lower()
-    file_name = f"{course_title_safe}_{unique_id}.{file.name.split('.')[-1]}"
-    s3_client = boto3.client(
-        's3',
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_S3_REGION_NAME
-    )
+# def upload_to_s3(file, course_title, file_type):
+#     unique_id = uuid.uuid4().hex[:8]  # Generates a unique 8-character ID
+#     course_title_safe = re.sub(r'\W+', '_', course_title).lower()
+#     file_name = f"{course_title_safe}_{unique_id}.{file.name.split('.')[-1]}"
+#     s3_client = boto3.client(
+#         's3',
+#         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+#         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+#         region_name=settings.AWS_S3_REGION_NAME
+#     )
+#     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+#     file_key = f"media/{file_type}/{file_name}"  # Path in S3
+#     try:
+#         s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
+#     except Exception as e:
+#         raise ValidationError(f"File upload to S3 failed: {str(e)}")
+#     file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+def upload_to_s3(file, folder):
+    s3 = boto3.client('s3')
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-    file_key = f"media/{file_type}/{file_name}"  # Path in S3
-    try:
-        s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
-    except Exception as e:
-        raise ValidationError(f"File upload to S3 failed: {str(e)}")
-    file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
-    return file_url
+    file_path = f"{folder}/{file.name}"
+    s3.upload_fileobj(
+        file,
+        bucket_name,
+        file_path,
+        ExtraArgs={'ACL': 'public-read','ContentType': file.content_type}
+    )
+    return file_path 
 # =================== get instructors =================
 def get_instructor(user_id):
     try:
@@ -179,112 +189,37 @@ def get_instructor(user_id):
     return user
 # ============== course Create View set =================
 class CourseCreateAPIView(APIView):
-    parser_classes = (MultiPartParser, FormParser)
-    def post(self, request, *args, **kwargs):
-        user_id = request.data.get('instructor')
-        if not user_id:
-            raise ValidationError("Instructor ID must be provided")
-        user = get_instructor(user_id)
-        thumbnail = request.FILES.get('thumbnail')
-        intro_video = request.FILES.get('intro_video')
-        course_title = request.data.get('title')
-        thumbnail_url = None
-        intro_video_url = None
-        if thumbnail:
-            thumbnail_url = upload_to_s3(thumbnail, course_title, "thumbnails")
-        if intro_video:
-            intro_video_url = upload_to_s3(intro_video, course_title, "intro_video")
-        course = Course.objects.create(
-            instructor=user,
-            title=request.data.get('title'),
-            description=request.data.get('description'),
-            price=request.data.get('price'),
-            discount_percentage=request.data.get('discount_percentage'),
-            discount_end_date=request.data.get('discount_end_date'),
-            published=request.data.get('published', False),
-            category_id=request.data.get('category'),
-            subcategory_id=request.data.get('subcategory'),
-            thumbnail=thumbnail_url,  
-            intro_video=intro_video_url  
-        )
-        return Response({
-            "id": course.id,
-            "title": course.title,
-            "thumbnail": thumbnail_url,
-            "intro_video": intro_video_url,
-        }, status=status.HTTP_201_CREATED)
-# ============== upload contents like video or document ============
-class UploadContentView(APIView):
-    def post(self, request, *args, **kwargs):
-        content_type = request.data.get('content_type')  # 'lecture' or 'assignment'
-        section_id = request.data.get('section_id')
+    def list(self, request):
+        lectures = Lecture.objects.all()
+        serializer = LectureSerializer(lectures, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    # Retrieve a single lecture
+    def retrieve(self, request, pk=None):
+        try:
+            lecture = Lecture.objects.get(pk=pk)
+            serializer = LectureSerializer(lecture)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Lecture.DoesNotExist:
+            return Response({"error": "Lecture not found"}, status=status.HTTP_404_NOT_FOUND)
+    def create(self, request):
+        section = request.data.get('section')
         title = request.data.get('title')
-        file = request.FILES.get('file')
-        if not content_type or not file or not section_id or not title:
-            raise ValidationError("Content type, file, title, and section ID must be provided.")
-        if content_type == 'lecture':
-            instructor_id = request.data.get('instructor')
-            if not instructor_id:
-                raise ValidationError("Instructor ID must be provided.")
-            return self.handle_lecture_upload(section_id, title, file, instructor_id)
-        elif content_type == 'assignment':
-            return self.handle_assignment_upload(section_id, title, file, request.user)
-        else:
-            raise ValidationError("Invalid content type. Must be 'lecture' or 'assignment'.")
-    def handle_lecture_upload(self, section_id, title, file, instructor_id):
-        section = get_object_or_404(Section, id=section_id)
-        course = section.course
-        if course.instructor.id != int(instructor_id):
-            raise ValidationError("Only the instructor of the course can upload lectures.")
-        next_order = section.lectures.count() + 1
-        file_url = self.upload_to_s3(file, f"lectures/{course.id}/{section_id}/{title}")
+        order = request.data.get('order')
+        video_file = request.FILES.get('video_file')
+        if not all([section, title, order, video_file]):
+            return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+        file_path = upload_to_s3(video_file, 'lectures')
+        # Save the lecture instance in the database
         lecture = Lecture.objects.create(
-            section=section,
+            section_id=section,
             title=title,
-            order=next_order,
-            video_file=file_url
+            order=order,
+            video_file=file_path
         )
-        return Response({
-            "message": "Lecture uploaded successfully.",
-            "lecture_id": lecture.id,
-            "section_id": section.id,
-            "course_id": course.id,
-            "file_url": lecture.video_file
-        }, status=status.HTTP_201_CREATED)
-    def handle_assignment_upload(self, section_id, title, file, user):
-        section = get_object_or_404(Section, id=section_id)
-        assignment = Assignment.objects.filter(course=section.course).first()
-        if not assignment:
-            raise ValidationError("No assignment found for the section's course.")
-        file_url = self.upload_to_s3(file, f"assignments/{assignment.course.id}/{section_id}/{title}")
-        assignment_submission = AssignmentSubmission.objects.create(
-            assignment=assignment,
-            user=user,
-            submission_file=file_url
-        )
-        return Response({
-            "message": "Assignment submitted successfully.",
-            "submission_id": assignment_submission.id,
-            "section_id": section.id,
-            "course_id": section.course.id,
-            "file_url": assignment_submission.submission_file
-        }, status=status.HTTP_201_CREATED)
-    def upload_to_s3(self, file, file_path):
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        )
-        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-        s3.upload_fileobj(
-            file,
-            bucket_name,
-            file_path,
-            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
-        )
-        file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{file_path}"
-        return file_url
-# =================================================================
+        serializer = LectureSerializer(lecture)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+# ============== upload contents like video or document ============
+
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     def get_serializer_class(self):
@@ -300,43 +235,37 @@ class SectionViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 
-class LectureViewSet(APIView):
-    def post(self, request, *args, **kwargs):
-        # Extracting data from the request
-        section_id = request.data.get('section_id')
+class LectureViewSet(viewsets.ViewSet):
+    # Retrieve all lectures
+    def list(self, request):
+        lectures = Lecture.objects.all()
+        serializer = LectureSerializer(lectures, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    # Retrieve a single lecture
+    def retrieve(self, request, pk=None):
+        try:
+            lecture = Lecture.objects.get(pk=pk)
+            serializer = LectureSerializer(lecture)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Lecture.DoesNotExist:
+            return Response({"error": "Lecture not found"}, status=status.HTTP_404_NOT_FOUND)
+    # Upload a new lecture (with file upload)
+    def create(self, request):
+        section = request.data.get('section')
         title = request.data.get('title')
         order = request.data.get('order')
         video_file = request.FILES.get('video_file')
-        # Validation for required fields
-        if not section_id or not title or not order or not video_file:
-            raise ValidationError("Section, title, order, video_file, and instructor must be provided")
-        try:
-            section = Section.objects.get(id=section_id)
-        except Section.DoesNotExist:
-            raise ValidationError("Section not found")
-        try:
-            order = int(order)
-        except ValueError:
-            raise ValidationError("Order must be an integer")
-        file_url = upload_to_s3(video_file, section.course.title, 'lectures')
-        try:
-            lecture = Lecture.objects.create(
-                section=section,
-                title=title,
-                order=order,
-                video_file=file_url,
-            )
-        except Exception as e:
-            raise ValidationError(f"Error creating lecture: {e}")
-        return Response({
-            "message": "Lecture created successfully",
-            "lecture": {
-                "id": lecture.id,
-                "title": lecture.title,
-                "video_file": file_url,
-                "order": lecture.order,
-            }
-        })
+        if not all([section, title, order, video_file]):
+            return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+        file_path = upload_to_s3(video_file, 'lectures')
+        lecture = Lecture.objects.create(
+            section_id=section,
+            title=title,
+            order=order,
+            video_file=file_path
+        )
+        serializer = LectureSerializer(lecture)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
