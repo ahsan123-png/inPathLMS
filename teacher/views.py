@@ -244,7 +244,6 @@ class CourseCreateAPIView(APIView):
         price = Decimal(price)
         if discount_end_date:
             try:
-                # Handle cases where time is missing by appending a default
                 if 'T' not in discount_end_date:
                     discount_end_date += 'T00:00:00Z'  # Default to midnight
                 discount_end_date_obj = make_aware(
@@ -255,7 +254,6 @@ class CourseCreateAPIView(APIView):
                                 status=status.HTTP_400_BAD_REQUEST)
             else:
                 discount_end_date_obj = None
-        
         if not all([title, description, instructor, category, price]):
             return Response({"error": "All required fields must be provided."}, status=status.HTTP_400_BAD_REQUEST)
             discount_end_date_obj = None
@@ -293,7 +291,6 @@ class CourseCreateAPIView(APIView):
         serializer = CourseSerializer(course)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 # ============== upload contents like video or document ============
-
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
     def get_serializer_class(self):
@@ -307,7 +304,6 @@ class SectionViewSet(viewsets.ModelViewSet):
         if course.instructor != user:
             raise ValidationError("Only the instructor of the course can add sections")
         serializer.save()
-
 
 class LectureViewSet(viewsets.ViewSet):
     # Retrieve all lectures
@@ -424,6 +420,7 @@ class AssignmentViewSet(APIView):
         sanitized_file_name = re.sub(r'\W+', '_', file_name).lower()
         file_extension = file_name.split('.')[-1] 
         return f"assignments/{sanitized_title}_{unique_id}.{file_extension}"
+# ============= Feedback =============================
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
@@ -433,7 +430,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
         if user.userrole.role != 'student':
             raise ValidationError("Only students can give feedback")
         serializer.save()
-
+# ================== Enrollment =================================
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
