@@ -190,6 +190,15 @@ def get_instructor(user_id):
     return user
 # ============== course Create View set =================
 class CourseCreateAPIView(APIView):
+    def parse_discount_end_date(self, discount_end_date):
+        try:
+            return make_aware(datetime.strptime(discount_end_date, '%Y-%m-%dT%H:%M:%SZ'))
+        except ValueError:
+            try:
+                return make_aware(datetime.strptime(discount_end_date, '%Y-%m-%d'))
+            except ValueError:
+                raise ValidationError(
+                )
     def generate_file_path(self, directory, file_name):
         # Generate a unique file path for storing in S3
         unique_id = uuid.uuid4().hex[:8]
