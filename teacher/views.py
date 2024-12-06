@@ -473,7 +473,7 @@ class CourseSectionsView(View):
                             'lecture_id': lecture.id,
                             'lecture_title': lecture.title,
                             'order': lecture.order,
-                            'video_file': lecture.video_file  # Directly return the URL stored in CharField
+                            'video_file': lecture.video_file_url  # Directly return the URL stored in CharField
                         }
                         for lecture in section.lectures.all().order_by('order')
                     ],
