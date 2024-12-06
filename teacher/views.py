@@ -242,9 +242,23 @@ class CourseCreateAPIView(APIView):
         intro_video = request.FILES.get('intro_video')
         discount_percentage = Decimal(discount_percentage)
         price = Decimal(price)
+        if discount_end_date:
+            try:
+                # Handle cases where time is missing by appending a default
+                if 'T' not in discount_end_date:
+                    discount_end_date += 'T00:00:00Z'  # Default to midnight
+                discount_end_date_obj = make_aware(
+                    datetime.strptime(discount_end_date, '%Y-%m-%dT%H:%M:%SZ')
+                )
+            except ValueError:
+                return Response({"error": "Invalid discount_end_date format. Use ISO 8601 format (e.g., 2024-12-31T23:59:59Z)."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                discount_end_date_obj = None
+        
         if not all([title, description, instructor, category, price]):
             return Response({"error": "All required fields must be provided."}, status=status.HTTP_400_BAD_REQUEST)
-        discount_end_date_obj = None
+            discount_end_date_obj = None
         if discount_end_date:
             try:
                 discount_end_date_obj = make_aware(
