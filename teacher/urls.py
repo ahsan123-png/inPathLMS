@@ -24,5 +24,6 @@ urlpatterns = [
     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),
     path('lectures/', LectureViewSet.as_view({'get': 'list', 'post': 'create'}), name='lecture-create'),
     path('assignments/', AssignmentViewSet.as_view(), name='assignment-create'),
+    path('courses_list/subcategory/<int:subcategory_id>', CourseListBySubCategoryView.as_view(), name='CourseListBySubCategoryView'),
 
 ]

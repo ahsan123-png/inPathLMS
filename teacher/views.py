@@ -473,7 +473,7 @@ class CourseSectionsView(View):
                             'lecture_id': lecture.id,
                             'lecture_title': lecture.title,
                             'order': lecture.order,
-                            'video_file': lecture.video_file_url  # Directly return the URL stored in CharField
+                            'video_file': lecture.video_file_url
                         }
                         for lecture in section.lectures.all().order_by('order')
                     ],
@@ -482,7 +482,7 @@ class CourseSectionsView(View):
                             'assignment_id': assignment.id,
                             'assignment_title': assignment.title,
                             'description': assignment.description,
-                            'doc_files': assignment.doc_files  # Directly return the URL stored in CharField
+                            'doc_files': assignment.doc_files
                         }
                         for assignment in section.assignment.all().order_by('id')
                     ]
@@ -491,3 +491,11 @@ class CourseSectionsView(View):
             ]
         }
         return JsonResponse(data, status=200)
+# ================ Get all courses by subcategory id =================
+class CourseListBySubCategoryView(APIView):
+    def get(self, request, subcategory_id):
+        courses = Course.objects.filter(subcategory_id=subcategory_id).select_related('category', 'subcategory', 'instructor')
+        if not courses.exists():
+            return Response({"detail": "No courses found for this subcategory."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
