@@ -1,3 +1,4 @@
+import json
 import boto3
 from django.views import View
 from rest_framework.views import APIView
@@ -18,6 +19,7 @@ from django.conf import settings
 from datetime import datetime
 from django.utils.timezone import make_aware
 from decimal import Decimal
+from django.shortcuts import get_object_or_404
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -290,6 +292,16 @@ class CourseCreateAPIView(APIView):
         )
         serializer = CourseSerializer(course)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+# ============== Complete Course =============================
+class CompleteCourseAPIView(APIView):
+    def post(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id)
+            course.published = True
+            course.save()
+            return Response({"message": "Course marked as published successfully"}, status=status.HTTP_200_OK)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 # ============== upload contents like video or document ============
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all()
@@ -499,3 +511,33 @@ class CourseListBySubCategoryView(APIView):
             return Response({"detail": "No courses found for this subcategory."}, status=status.HTTP_404_NOT_FOUND)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+# ============ Enrollment course ===================
+class EnrollStudentAPIView(APIView):
+    def post(self, request, course_id):
+        try:
+            data=json.loads(request.body)
+            user_id = data.get('user')
+            user = User.objects.get(id=user_id)
+            user_role = UserRole.objects.filter(user=user).first()
+            if not user_role or user_role.role != 'student':
+                return Response({"error": "Only students can enroll in courses."}, status=status.HTTP_403_FORBIDDEN)
+            course = get_object_or_404(Course, id=course_id)
+            enrollment, created = Enrollment.objects.get_or_create(user=user, course=course)
+            if not created:
+                return Response({"message": "You are already enrolled in this course."}, status=status.HTTP_200_OK)
+            return Response({"message": "Enrollment successful!",
+                            "enrollment_id":enrollment.id }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# ================== Get All students By enrollment id =================
+# class GetStudentsByEnrollmentID(APIView):
+#     def get(self, request, enrollment_id):
+#         try:
+#             enrollment = Enrollment.objects.get(id=enrollment_id)
+#             students = User.objects.filter(id=enrollment.student.id)
+#             serializer = UserSerializer(students, many=True)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         except Enrollment.DoesNotExist:
+#             return Response({"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
+#         except Exception as e:
+#             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -21,9 +21,11 @@ urlpatterns = [
     path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
+    path('course/complete/<int:course_id>', CompleteCourseAPIView.as_view(), name='CompleteCourseAPIView'),
     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),
     path('lectures/', LectureViewSet.as_view({'get': 'list', 'post': 'create'}), name='lecture-create'),
     path('assignments/', AssignmentViewSet.as_view(), name='assignment-create'),
     path('courses_list/subcategory/<int:subcategory_id>', CourseListBySubCategoryView.as_view(), name='CourseListBySubCategoryView'),
+    path('course/enrollment/<int:course_id>/', EnrollStudentAPIView.as_view(), name='EnrollStudentAPIView'),
 
 ]
