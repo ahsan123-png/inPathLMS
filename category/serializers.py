@@ -5,16 +5,23 @@ class BaseModelSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ['id', 'name']
 # Category Serializer
-class CategorySerializer(serializers.ModelSerializer):
+class CourseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Category
-        fields = ['id', 'name']
-# SubCategory Serializer
+        model = Course
+        fields = ['id', 'title', 'description', 'price', 'discount_percentage', 'thumbnail', 'intro_video']
+
+# Updated SubCategory Serializer
 class SubCategorySerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(), source='category', write_only=True
-    )
+    courses = CourseSerializer(many=True, source='course_set', read_only=True)
+
     class Meta:
         model = SubCategory
-        fields = ['id', 'name', 'category', 'category_id']
+        fields = ['id', 'name', 'courses']
+
+# Updated Category Serializer
+class CategorySerializer(serializers.ModelSerializer):
+    subcategories = SubCategorySerializer(many=True, source='subcategory_set', read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'subcategories']
