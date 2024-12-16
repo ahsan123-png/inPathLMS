@@ -10,6 +10,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
+from category.serializers import *
 import random
 from userEx.models import *
 import re
@@ -20,6 +21,9 @@ from datetime import datetime
 from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
+from django.db.models import Prefetch
+
+
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -541,3 +545,17 @@ class EnrollStudentAPIView(APIView):
 #             return Response({"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
 #         except Exception as e:
 #             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# ================== get all data of courses =================
+class CetegoryCourseAPIView(APIView):
+    def get(self, request):
+        cetegories = Category.objects.prefetch_related(
+            Prefetch(
+                'subcategory_set',
+                queryset=SubCategory.objects.prefetch_related(
+                    Prefetch('course_set', queryset=Course.objects.filter(is_approved=False, published=False))
+                )
+            )
+        )
+        serializer = CategorySerializer(cetegories, many=True)
+        return Response(serializer.data)
