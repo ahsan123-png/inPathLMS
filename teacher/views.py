@@ -533,18 +533,6 @@ class EnrollStudentAPIView(APIView):
                             "enrollment_id":enrollment.id }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-# ================== Get All students By enrollment id =================
-# class GetStudentsByEnrollmentID(APIView):
-#     def get(self, request, enrollment_id):
-#         try:
-#             enrollment = Enrollment.objects.get(id=enrollment_id)
-#             students = User.objects.filter(id=enrollment.student.id)
-#             serializer = UserSerializer(students, many=True)
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         except Enrollment.DoesNotExist:
-#             return Response({"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
-#         except Exception as e:
-#             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # ================== get all data of courses =================
 class CetegoryCourseAPIView(APIView):
@@ -559,3 +547,26 @@ class CetegoryCourseAPIView(APIView):
         )
         serializer = CategorySerializer(cetegories, many=True)
         return Response(serializer.data)
+################  API For submit review ##########################
+class SubmitReviewAPIView(APIView):
+    def post(self, request):
+        course_id = request.data.get('course')
+        user_id = request.data.get('user')
+        course = get_object_or_404(Course, id=course_id)
+        user = get_object_or_404(User, id=user_id)
+        existing_review = Feedback.objects.filter(course=course, user=user).first()
+        if existing_review:
+            return Response(
+                {"error": "You have already submitted a review for this course."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        data = request.data.copy()
+        data['user'] = user.id
+        serializer = FeedbackSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=user, course=course)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            
+            
