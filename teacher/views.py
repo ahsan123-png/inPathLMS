@@ -22,6 +22,8 @@ from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
+from django.db.models import Avg
+from django.db.models import Sum
 
 
 # =========== CBV ===================
@@ -533,18 +535,6 @@ class EnrollStudentAPIView(APIView):
                             "enrollment_id":enrollment.id }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-# ================== Get All students By enrollment id =================
-# class GetStudentsByEnrollmentID(APIView):
-#     def get(self, request, enrollment_id):
-#         try:
-#             enrollment = Enrollment.objects.get(id=enrollment_id)
-#             students = User.objects.filter(id=enrollment.student.id)
-#             serializer = UserSerializer(students, many=True)
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         except Enrollment.DoesNotExist:
-#             return Response({"detail": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
-#         except Exception as e:
-#             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # ================== get all data of courses =================
 class CetegoryCourseAPIView(APIView):
@@ -559,3 +549,39 @@ class CetegoryCourseAPIView(APIView):
         )
         serializer = CategorySerializer(cetegories, many=True)
         return Response(serializer.data)
+################  API For submit review ##########################
+class SubmitReviewAPIView(APIView):
+    def post(self, request):
+        course_id = request.data.get('course')
+        user_id = request.data.get('user')
+        course = get_object_or_404(Course, id=course_id)
+        user = get_object_or_404(User, id=user_id)
+        existing_review = Feedback.objects.filter(course=course, user=user).first()
+        if existing_review:
+            return Response(
+                {"error": "You have already submitted a review for this course."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        data = request.data.copy()
+        data['user'] = user.id
+        serializer = FeedbackSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save(user=user, course=course)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+### Get all feedback for the specified course ###########
+def average_rating(request, course_id):
+    feedbacks = Feedback.objects.filter(course_id=course_id)
+    if not feedbacks.exists():
+        return JsonResponse({'error': 'No ratings available for this course'}, status=404)
+    total_ratings = feedbacks.count()
+    sum_of_ratings = feedbacks.aggregate(total=Sum('rating'))['total']
+    if sum_of_ratings is not None and total_ratings > 0:
+        average_rating = sum_of_ratings / total_ratings
+        return JsonResponse({'course_id': course_id, 'average_rating': average_rating})
+    else:
+        return JsonResponse({'error': 'Error calculating the average rating'}, status=500)
+
+
+            

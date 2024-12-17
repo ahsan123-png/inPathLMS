@@ -68,7 +68,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
-        fields = '__all__'
+        fields = ['id', 'course', 'user', 'rating', 'comments', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user']
 
 # Serializer for Enrollment (to manage course enrollment for students)
 class EnrollmentSerializer(serializers.ModelSerializer):
