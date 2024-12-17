@@ -1,6 +1,8 @@
 from django.urls import path , include
 from rest_framework.routers import DefaultRouter
 from .views import *
+from . import views
+
 
 
 router = DefaultRouter()
@@ -30,6 +32,6 @@ urlpatterns = [
     path('course/enrollment/<int:course_id>/', EnrollStudentAPIView.as_view(), name='EnrollStudentAPIView'),
     path('api/categories-courses/', CetegoryCourseAPIView.as_view(), name='categories-courses'),
     path('api/submit-review/', SubmitReviewAPIView.as_view(), name='submit-review'),
-    
+    path('api/average-rating/<int:course_id>/', views.average_rating, name='average_rating'),
 
 ]

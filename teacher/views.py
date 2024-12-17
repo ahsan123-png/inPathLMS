@@ -22,6 +22,8 @@ from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
+from django.db.models import Avg
+from django.db.models import Sum
 
 
 # =========== CBV ===================
@@ -568,5 +570,18 @@ class SubmitReviewAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            
+### Get all feedback for the specified course ###########
+def average_rating(request, course_id):
+    feedbacks = Feedback.objects.filter(course_id=course_id)
+    if not feedbacks.exists():
+        return JsonResponse({'error': 'No ratings available for this course'}, status=404)
+    total_ratings = feedbacks.count()
+    sum_of_ratings = feedbacks.aggregate(total=Sum('rating'))['total']
+    if sum_of_ratings is not None and total_ratings > 0:
+        average_rating = sum_of_ratings / total_ratings
+        return JsonResponse({'course_id': course_id, 'average_rating': average_rating})
+    else:
+        return JsonResponse({'error': 'Error calculating the average rating'}, status=500)
+
+
             
