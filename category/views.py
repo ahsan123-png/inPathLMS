@@ -28,6 +28,8 @@ class SubCategoryViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+    def perform_create(self, serializer):
+        serializer.save(category_id=self.request.data.get('category'))
     
 class SubCategoryByCategoryAPIView(APIView):
     def get(self, request, category_id):

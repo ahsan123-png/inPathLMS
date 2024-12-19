@@ -17,6 +17,10 @@ class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SubCategory
         fields = ['id', 'name', 'courses']
+    def validate_category(self, value):
+        if not value:
+            raise serializers.ValidationError("Category is required.")
+        return value
 
 # Updated Category Serializer
 class CategorySerializer(serializers.ModelSerializer):
