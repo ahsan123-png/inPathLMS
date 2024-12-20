@@ -1,10 +1,16 @@
 
+import requests
+from bs4 import BeautifulSoup
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from django.http import JsonResponse
 from rest_framework.permissions import IsAuthenticated
 from userEx.models import *
 from .serializers import *
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .scraper import scrape_trending_courses
 # ====================== Views ======================
 # Category ViewSet
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -52,3 +58,13 @@ class SubCategoryByCategoryAPIView(APIView):
                 {"detail": "Category not found."},
                 status=404  # Status 404 Not Found
             )
+# ===================== Trending sKills =============================
+class TrendingSkillsView(APIView):
+    def get(self, request):
+        try:
+            urls='https://www.classcentral.com/report/most-popular-online-courses/'
+            trending_skills = scrape_trending_courses(urls)
+            return Response({"trending_skills": trending_skills}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
