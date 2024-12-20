@@ -11,5 +11,6 @@ router.register(r'subcategories', SubCategoryViewSet, basename='subcategory')
 
 urlpatterns = [
     path('', include(router.urls)),
-     path('get/subcategories/<int:category_id>/', SubCategoryByCategoryAPIView.as_view(), name='get_subcategories_by_category'),
+    path('get/subcategories/<int:category_id>/', SubCategoryByCategoryAPIView.as_view(), name='get_subcategories_by_category'),
+    path('trending-skills/', TrendingSkillsView.as_view(), name='trending_skills'),
 ]
