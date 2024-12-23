@@ -29,5 +29,6 @@ urlpatterns = [
     path('courses_list/subcategory/<int:subcategory_id>', CourseListBySubCategoryView.as_view(), name='CourseListBySubCategoryView'),
     path('course/enrollment/<int:course_id>/', EnrollStudentAPIView.as_view(), name='EnrollStudentAPIView'),
     path('api/categories-courses/', CetegoryCourseAPIView.as_view(), name='categories-courses'),
+    path('admin/course/approve/<int:course_id>/', CourseApprovalAPIView.as_view(), name='approve_course'),
 
 ]

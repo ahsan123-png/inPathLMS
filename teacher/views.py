@@ -22,7 +22,7 @@ from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
-
+from rest_framework.exceptions import PermissionDenied
 
 # =========== CBV ===================
 #=============== Create Profile  ======================
@@ -559,3 +559,17 @@ class CetegoryCourseAPIView(APIView):
         )
         serializer = CategorySerializer(cetegories, many=True)
         return Response(serializer.data)
+# ================ Approve Course ===================
+class CourseApprovalAPIView(APIView):
+    def patch(self, request, course_id):
+        # Ensure the user is an admin
+        # if not request.user.userrole.role == 'admin':
+        #     raise PermissionDenied("You do not have permission to approve courses.")
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response({"detail": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
+        course.is_approved = True
+        course.save()
+        serializer = CourseSerializer(course)
+        return Response(serializer.data, status=status.HTTP_200_OK)
