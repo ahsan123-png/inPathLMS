@@ -62,5 +62,6 @@ class MultiCourseEnrollmentSerializer(serializers.Serializer):
 class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
-        fields = "__all__"
+        fields = ['id', 'first_name', 'last_name', 'headline', 'biography', 'website', 
+                  'facebook', 'linkedin', 'youtube', 'language', 'profile_picture']
 
