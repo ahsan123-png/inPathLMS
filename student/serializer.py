@@ -58,3 +58,9 @@ class MultiCourseEnrollmentSerializer(serializers.Serializer):
             )
             enrollments.append(enrollment)
         return enrollments
+# ================ student profile =============================
+class StudentProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentProfile
+        fields = "__all__"
+

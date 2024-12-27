@@ -32,6 +32,23 @@ class InstructorProfile(models.Model):
     def __str__(self):
         return f"Profile of {self.user.username}"
 
+#================ Model for Student Profile ===================
+class StudentProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255)
+    headline = models.CharField(max_length=255, null=True, blank=True)
+    biography = models.TextField(null=True, blank=True)
+    website = models.URLField(null=True, blank=True)
+    facebook = models.URLField(null=True, blank=True)
+    linkedin = models.URLField(null=True, blank=True)
+    youtube = models.URLField(null=True, blank=True)
+    language = models.CharField(max_length=50, null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='student_profiles/', null=True, blank=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
+
 #=============== Category =========================
 class Category(models.Model):
     name = models.CharField(max_length=100)

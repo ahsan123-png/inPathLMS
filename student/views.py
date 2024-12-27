@@ -7,6 +7,9 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.hashers import check_password
 from django.http import JsonResponse
+from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import viewsets
 from .serializer import *
 from userEx.models import *
 # ============== CBV CURD =============== 
@@ -138,3 +141,58 @@ class MultiCourseEnrollmentView(APIView):
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# ==================== student profile ====================
+class StudentProfileView(APIView):
+    def get(self, request, pk=None):
+        try:
+            if pk:
+                profile = StudentProfile.objects.get(pk=pk)
+                serializer = StudentProfileSerializer(profile)
+                return Response(serializer.data)
+            else:
+                profiles = StudentProfile.objects.all()
+                serializer = StudentProfileSerializer(profiles, many=True)
+                return Response(serializer.data)
+        except ObjectDoesNotExist:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def post(self, request):
+        try:
+            student_id = request.data.get('id')
+            if student_id:
+                profile, created = StudentProfile.objects.get_or_create(id=student_id)
+            else:
+                profile = StudentProfile()
+            serializer = StudentProfileSerializer(profile, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                if student_id and 'created' in locals() and created:
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)  # Newly created profile
+                return Response(serializer.data, status=status.HTTP_200_OK)  # Existing profile updated
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def put(self, request, pk=None):
+        try:
+            # Retrieve the profile by the primary key (id)
+            profile = StudentProfile.objects.get(pk=pk)
+            serializer = StudentProfileSerializer(profile, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def delete(self, request, pk=None):
+        try:
+            # Retrieve the profile by the primary key (id)
+            profile = StudentProfile.objects.get(pk=pk)
+            profile.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
