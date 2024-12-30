@@ -44,10 +44,15 @@ class StudentProfile(models.Model):
     linkedin = models.URLField(null=True, blank=True)
     youtube = models.URLField(null=True, blank=True)
     language = models.CharField(max_length=50, null=True, blank=True)
-    profile_picture = models.ImageField(upload_to='student_profiles/', null=True, blank=True)
-
+    profile_picture = models.CharField(max_length=500, blank=True, null=True)  # Use CharField for S3 URL
     def __str__(self):
         return f"Profile of {self.user.username}"
+    @property
+    def profile_picture_url(self):
+        if self.profile_picture.startswith("http"):
+            # If it's already a full URL, return as is
+            return self.profile_picture
+        return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.profile_picture}"
 
 #=============== Category =========================
 class Category(models.Model):
