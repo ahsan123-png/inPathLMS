@@ -13,7 +13,7 @@ from .serializer import *
 from userEx.models import *
 # ============== CBV CURD =============== 
 
-class StudentProfileView(APIView):
+class StudentProfileViews(APIView):
     def get_user_role(self, user):
         try:
             return UserRole.objects.select_related('user').get(user=user)
@@ -209,37 +209,41 @@ class ProfilePictureUploadView(APIView):
         student_id = request.data.get('student_id')
         profile_picture = request.FILES.get('profile_picture')
         if not student_id or not profile_picture:
-            return JsonResponse({"error": "Student ID and profile picture are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({"error": "Student ID and profile picture are required."}, status=400)
         try:
             student = User.objects.get(id=student_id)
         except User.DoesNotExist:
-            return JsonResponse({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"error": "Student not found."}, status=404)
         try:
             profile = StudentProfile.objects.get(user=student)
         except StudentProfile.DoesNotExist:
-            return JsonResponse({"error": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"error": "Student profile not found."}, status=404)
+        student_name = f"{profile.first_name}_{profile.last_name}"
+        student_name_slug = slugify(student_name).replace(" ", "_")
+        ext = os.path.splitext(profile_picture.name)[-1].lower()
+        new_filename = f"{student_name_slug}_{uuid.uuid4().hex[:8]}{ext}"
+        file_key = f"student_profiles/{new_filename}"
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME
         )
-        file_name = os.path.basename(profile_picture.name)
-        file_key = f"student_profiles/{file_name}"
         try:
             s3.upload_fileobj(
                 profile_picture,
                 settings.AWS_STORAGE_BUCKET_NAME,
-                f"media/{file_key}",
+                file_key,
                 ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type}
             )
-            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
+            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
             profile.profile_picture = file_url
             profile.save()
             return JsonResponse({
                 "student_id": student.id,
                 "profile_picture_url": file_url
-            }, status=status.HTTP_200_OK)
+            }, status=200)
         except Exception as e:
-            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=500)
+
 
