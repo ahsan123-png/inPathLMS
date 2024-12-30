@@ -1,5 +1,7 @@
 from django.urls import path , include
 from rest_framework.routers import DefaultRouter
+
+from userEx.views import SignupAPIView
 from .views import *
 
 
@@ -30,5 +32,6 @@ urlpatterns = [
     path('course/enrollment/<int:course_id>/', EnrollStudentAPIView.as_view(), name='EnrollStudentAPIView'),
     path('api/categories-courses/', CetegoryCourseAPIView.as_view(), name='categories-courses'),
     path('admin/course/approve/<int:course_id>/', CourseApprovalAPIView.as_view(), name='approve_course'),
+    path('teacher/signup/', SignupAPIView.as_view(), name='teacher_signup'),
 
 ]
