@@ -22,11 +22,11 @@ class UserRole(models.Model):
 #================ Model for Instructor Profile ===================
 class InstructorProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    bio = models.TextField(null=True, blank=True)  # Short biography
-    degrees = models.TextField(null=True, blank=True)  # e.g., "PhD in Education"
-    teaching_experience = models.IntegerField(default=0)  # Number of years
-    specialization  = models.TextField(null=True, blank=True)  # e.g., "Mathematics, Physics"
-    teaching_history = models.TextField(null=True, blank=True)  # e.g., "Taught at XYZ University"
+    bio = models.TextField(null=True, blank=True)
+    degrees = models.TextField(null=True, blank=True) 
+    teaching_experience = models.IntegerField(default=0) 
+    specialization  = models.TextField(null=True, blank=True)  
+    teaching_history = models.TextField(null=True, blank=True) 
     profile_picture = models.ImageField(upload_to='instructor_profiles/', null=True, blank=True)
 
     def __str__(self):

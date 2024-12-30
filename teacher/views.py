@@ -30,18 +30,26 @@ class InstructorProfileCreateView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
         user_id = request.data.get('user')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        if not first_name or not last_name:
+            return Response({"error": "First name and last name are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not first_name or not last_name:
+            return Response({"error": "First name and last name are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
             return Response({"error": "User does not have the 'instructor' role"}, status=status.HTTP_400_BAD_REQUEST)
+        user.first_name = first_name
+        user.last_name = last_name
+        user.save()
         serializer = InstructorProfileSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            profile = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 #============= Teacher CRUD =======================
 class InstructorProfileView(APIView):
     def get_user_role(self, user):

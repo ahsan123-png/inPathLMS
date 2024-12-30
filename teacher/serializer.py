@@ -2,10 +2,14 @@ from rest_framework import serializers
 from userEx.models import *
 #===========================++++++++++++++++++++++++++++++++++
 class InstructorProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
     class Meta:
         model = InstructorProfile
-        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture']
+        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
         # read_only_fields = ['user']
+    def get_full_name(self, obj):
+    # Access the related User object and return the full name
+        return f"{obj.user.first_name} {obj.user.last_name}"
     def create(self, validated_data):
         user = validated_data['user']
         if InstructorProfile.objects.filter(user=user).exists():
