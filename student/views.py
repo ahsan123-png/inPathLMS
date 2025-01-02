@@ -1,92 +1,14 @@
 import boto3
+from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.response import Response
-from django.http import JsonResponse
+from django.http import JsonResponse 
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.hashers import check_password
-from django.http import JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
 from userEx.models import *
 # ============== CBV CURD =============== 
-
-# class StudentProfileViews(APIView):
-#     def get_user_role(self, user):
-#         try:
-#             return UserRole.objects.select_related('user').get(user=user)
-#         except UserRole.DoesNotExist:
-#             return None
-#     def get(self, request, pk=None):
-#         if pk:
-#             try:
-#                 user = User.objects.select_related('userrole').get(pk=pk)
-#                 user_role = self.get_user_role(user)
-#                 if user_role is None or user_role.role != 'student':
-#                     return JsonResponse(
-#                         {"error": "The provided user ID does not belong to a student. Please provide a valid Student ID."},status=status.HTTP_400_BAD_REQUEST
-#                     )
-#                 # student_details =User.objects.filter(userrole__role='student').prefetch_related('userrole')
-#                 serializer = StudentProfileSerializer(user)
-#                 return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-#             except User.DoesNotExist:
-#                 return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-#             except User.DoesNotExist:
-#                 return JsonResponse({"error": "Student details not found."}, status=status.HTTP_404_NOT_FOUND)
-#         else:
-#             students = User.objects.select_related('userrole').filter(userrole__role='student')
-#             serializer = StudentProfileSerializer(students, many=True)
-#             return JsonResponse(serializer.data,safe=False, status=status.HTTP_200_OK)
-#     def put(self, request, pk):
-#         try:
-#             user = User.objects.select_related('userrole').get(pk=pk)
-#             user_role = self.get_user_role(user)
-#             if user_role is None or user_role.role != 'student':
-#                 return JsonResponse(
-#                     {"error": "The provided user ID does not belong to a student. Please provide a valid Student ID."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-#             old_password = request.data.get('old_password')
-#             new_password = request.data.get('password')
-#             first_name = request.data.get('first_name')
-#             last_name = request.data.get('last_name')
-#             # Verify old password
-#             if old_password and not check_password(old_password, user.password):
-#                 return JsonResponse(
-#                     {"error": "The provided old password is incorrect. Please provide the correct password."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-#             if first_name:
-#                 user.first_name = first_name
-#             if last_name:
-#                 user.last_name = last_name
-#             if new_password:
-#                 user.set_password(new_password)  # Hash the new password
-#                 update_session_auth_hash(request, user)  # Keep the user logged in after password change
-#             user.save()  # Save the user object
-#             serializer = StudentProfileSerializer(user)
-#             return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-#         except User.DoesNotExist:
-#             return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-#     def delete(self, request, pk):
-#         try:
-#             user = User.objects.select_related('userrole').get(pk=pk)
-#             user_role = self.get_user_role(user)
-#             if user_role is None or user_role.role != 'student':
-#                 return JsonResponse(
-#                     {"error": "The provided user ID does not belong to a student. Please provide a valid Student ID."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-#             user.delete()  # Directly delete the user instance
-#             return JsonResponse({"message": "Student profile deleted."}, status=status.HTTP_204_NO_CONTENT)
-#         except User.DoesNotExist:
-#             return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-#         except User.DoesNotExist:
-#             return JsonResponse({"error": "Student details not found."}, status=status.HTTP_404_NOT_FOUND)
-
-
 # ================= Get student details who enroll to a course =================
 class EnrollmentStudentsView(APIView):
     def get(self, request, course_id):
@@ -113,8 +35,6 @@ class EnrollmentStudentsView(APIView):
         except Course.DoesNotExist:
             return Response({"error":"Course not found"}, status=status.HTTP_404_NOT_FOUND)
 # ==================== get all enrolled courses student id =================
-from rest_framework import status
-from rest_framework.response import Response
 class EnrolledCoursesAPIView(APIView):    
     def get(self, request, student_id):
         try:
@@ -128,8 +48,6 @@ class EnrolledCoursesAPIView(APIView):
             return Response({"error":str(e)}, status=status.HTTP_400_BAD_REQUEST) 
 
 # ====================  enrolled more than one courses student id =================
-from rest_framework.response import Response
-from rest_framework import status
 class MultiCourseEnrollmentView(APIView):
     def post(self, request):
         serializer = MultiCourseEnrollmentSerializer(data=request.data)
@@ -142,20 +60,29 @@ class MultiCourseEnrollmentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # ==================== student profile ====================
 class StudentProfileView(APIView):
-    def get(self, request, pk=None):
+    def get(self, request, user_id=None):
         try:
-            if pk:
-                profile = StudentProfile.objects.get(pk=pk)
-                serializer = StudentProfileSerializer(profile)
-                return Response(serializer.data)
+            if user_id:
+                user_profile = StudentProfile.objects.select_related(
+                    'user', 'user__userrole' 
+                ).get(user_id=user_id)
+                if user_profile.user.userrole.role != 'student':
+                    return JsonResponse({"detail": "User is not a student."}, status=status.HTTP_400_BAD_REQUEST)
+                serializer = StudentProfileSerializer(user_profile)
+                return JsonResponse(serializer.data)
             else:
-                profiles = StudentProfile.objects.all()
-                serializer = StudentProfileSerializer(profiles, many=True)
-                return Response(serializer.data)
+                profiles = StudentProfile.objects.select_related(
+                    'user', 'user__userrole' 
+                )
+                student_profiles = [profile for profile in profiles if profile.user.userrole.role == 'student']
+                serializer = StudentProfileSerializer(student_profiles, many=True)
+                return JsonResponse(serializer.data)
+        except StudentProfile.DoesNotExist:
+            return JsonResponse({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
-            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"detail": "User or Role not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def post(self, request):
         try:
             student_id = request.data.get('student_id')  # Expecting student_id in payload
@@ -164,44 +91,57 @@ class StudentProfileView(APIView):
                     user = User.objects.get(id=student_id)
                     user_role = UserRole.objects.get(user=user)
                     if user_role.role != 'student':
-                        return Response({"detail": "Provided user is not a student."}, status=status.HTTP_400_BAD_REQUEST)
+                        return JsonResponse({"detail": "Provided user is not a student."}, status=status.HTTP_400_BAD_REQUEST)
                 except User.DoesNotExist:
-                    return Response({"detail": "User does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse({"detail": "User does not exist."}, status=status.HTTP_400_BAD_REQUEST)
                 except UserRole.DoesNotExist:
-                    return Response({"detail": "User does not have a role."}, status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse({"detail": "User does not have a role."}, status=status.HTTP_400_BAD_REQUEST)
                 profile, created = StudentProfile.objects.get_or_create(user=user)
             else:
-                return Response({"detail": "Student ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse({"detail": "Student ID is required."}, status=status.HTTP_400_BAD_REQUEST)
             serializer = StudentProfileSerializer(profile, data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 if created:
-                    return Response(serializer.data, status=status.HTTP_201_CREATED)
-                return Response(serializer.data, status=status.HTTP_200_OK)  
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
+                return JsonResponse(serializer.data, status=status.HTTP_200_OK)  
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    def put(self, request, pk=None):
+            return JsonResponse({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def put(self, request, user_id=None):
         try:
-            profile = StudentProfile.objects.get(pk=pk)
+            if not user_id:
+                return JsonResponse({"detail": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            profile = get_object_or_404(StudentProfile.objects.select_related('user', 'user__userrole'), user_id=user_id)
+            if profile.user.userrole.role != 'student':
+                return JsonResponse({"detail": "User is not a student."}, status=status.HTTP_400_BAD_REQUEST)
             serializer = StudentProfileSerializer(profile, data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse(serializer.data)
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except StudentProfile.DoesNotExist:
+            return JsonResponse({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
-            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"detail": "User or Role not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    def delete(self, request, pk=None):
+            return JsonResponse({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def delete(self, request, user_id=None):
         try:
-            profile = StudentProfile.objects.get(pk=pk)
+            if not user_id:
+                return JsonResponse({"detail": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            profile = get_object_or_404(StudentProfile.objects.select_related('user', 'user__userrole'), user_id=user_id)
+            # Check if the user is a student
+            if profile.user.userrole.role != 'student':
+                return JsonResponse({"detail": "User is not a student."}, status=status.HTTP_400_BAD_REQUEST)
             profile.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return JsonResponse(status=status.HTTP_204_NO_CONTENT)
+        except StudentProfile.DoesNotExist:
+            return JsonResponse({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
-            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"detail": "User or Role not found."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 # ================ student profile image =================
 class ProfilePictureUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
