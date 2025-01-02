@@ -38,9 +38,11 @@ class LoginAPIView(APIView):
             user = serializer.validated_data['user']
             user_role = UserRole.objects.get(user=user).role
             token, created = Token.objects.get_or_create(user=user)
+            full_name = f"{user.first_name} {user.last_name}"
             return Response({
                 "message": "Login successful.",
                 "user_id": user.id,
+                "full_name": full_name,
                 "token": token.key,
                 "role": user_role 
             }, status=status.HTTP_200_OK)
