@@ -1,6 +1,5 @@
 import json
 from django.http import HttpResponse
-from django.shortcuts import render
 from .serializer import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,12 +7,13 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.shortcuts import get_object_or_404
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
 
 #============ Views ====================
 class SignupAPIView(APIView):
@@ -22,12 +22,17 @@ class SignupAPIView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             token, created = Token.objects.get_or_create(user=user)
+            if send_welcome_email(user):
+                email_message = "Welcome email sent successfully."
+            else:
+                email_message = "Failed to send welcome email."
             return Response({
                 "user_id": user.id,
                 "message": "User registered successfully.",
                 "username": user.username,
                 "token": token.key,
                 "role": serializer.validated_data['role'],
+                "email_message": email_message
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # ========= user Login ===========
@@ -103,3 +108,31 @@ def reset_password(request):
         return HttpResponse("Invalid request method", status=405)
 def validate_token(user, token):
     return default_token_generator.check_token(user, token)
+# ========================== Welcoming Mail ==============================
+def send_welcome_email(user):
+    subject = f"Welcome to Our Platform, {user.first_name}!"
+    signup_date = user.date_joined.strftime("%B %d, %Y")
+    message = f"""
+    Hello {user.first_name},
+
+    Welcome to our platform! We're absolutely thrilled to have you join our community. 🌟
+
+    Your journey with us started on {signup_date}, and we can't wait to be part of your learning and growth. 
+    Whether you're here to explore courses, engage with instructors, or connect with fellow students, we're here to support you every step of the way.
+
+    If you ever need help or have any questions, feel free to reach out to us anytime. We're always here for you.
+
+    Best regards,
+    The InPath Team
+
+    P.S. We hope you have a fantastic experience with us and enjoy all the amazing opportunities ahead!
+    """
+    
+    from_email = settings.EMAIL_HOST_USER
+    recipient_list = [user.email]
+    try:
+        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+    return True
