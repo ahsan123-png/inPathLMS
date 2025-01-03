@@ -146,16 +146,16 @@ class StudentProfileView(APIView):
 class ProfilePictureUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     def post(self, request, *args, **kwargs):
-        student_id = request.data.get('student_id')
+        user_id = request.data.get('user_id')
         profile_picture = request.FILES.get('profile_picture')
-        if not student_id or not profile_picture:
-            return JsonResponse({"error": "Student ID and profile picture are required."}, status=400)
+        if not user_id or not profile_picture:
+            return JsonResponse({"error": "User ID and profile picture are required."}, status=400)
         try:
-            student = User.objects.get(id=student_id)
+            student = User.objects.select_related('studentprofile').get(id=user_id)
         except User.DoesNotExist:
-            return JsonResponse({"error": "Student not found."}, status=404)
+            return JsonResponse({"error": "User not found."}, status=404)
         try:
-            profile = StudentProfile.objects.get(user=student)
+            profile = student.studentprofile
         except StudentProfile.DoesNotExist:
             return JsonResponse({"error": "Student profile not found."}, status=404)
         student_name = f"{profile.first_name}_{profile.last_name}"
@@ -163,27 +163,37 @@ class ProfilePictureUploadView(APIView):
         ext = os.path.splitext(profile_picture.name)[-1].lower()
         new_filename = f"{student_name_slug}_{uuid.uuid4().hex[:8]}{ext}"
         file_key = f"student_profiles/{new_filename}"
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
         try:
-            s3.upload_fileobj(
-                profile_picture,
-                settings.AWS_STORAGE_BUCKET_NAME,
-                file_key,
-                ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type}
-            )
-            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
-            profile.profile_picture = file_url
+            file_url = upload_to_s3(profile_picture, file_key)
+            if profile.profile_picture:
+                profile.profile_picture = file_url
+            else:
+                profile.profile_picture = file_url
             profile.save()
             return JsonResponse({
-                "student_id": student.id,
+                "user_id": student.id,
                 "profile_picture_url": file_url
             }, status=200)
         except Exception as e:
-            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=500)
-
+            return JsonResponse({"error": str(e)}, status=500)
+# ========================== upload_file =========================
+def upload_to_s3(file, file_key):
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_S3_REGION_NAME
+    )
+    try:
+        s3.upload_fileobj(
+            file,
+            settings.AWS_STORAGE_BUCKET_NAME,
+            file_key,
+            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+        )
+        file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+        return file_url
+    except Exception as e:
+        raise Exception(f"Failed to upload image: {str(e)}")
+# Refactored ProfilePictureUploadView
 
