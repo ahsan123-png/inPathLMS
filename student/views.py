@@ -85,10 +85,10 @@ class StudentProfileView(APIView):
             return JsonResponse({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def post(self, request):
         try:
-            student_id = request.data.get('student_id')  # Expecting student_id in payload
-            if student_id:
+            user_id = request.data.get('user_id')  # Expecting student_id in payload
+            if user_id:
                 try:
-                    user = User.objects.get(id=student_id)
+                    user = User.objects.get(id=user_id)
                     user_role = UserRole.objects.get(user=user)
                     if user_role.role != 'student':
                         return JsonResponse({"detail": "Provided user is not a student."}, status=status.HTTP_400_BAD_REQUEST)

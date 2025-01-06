@@ -60,8 +60,10 @@ class MultiCourseEnrollmentSerializer(serializers.Serializer):
         return enrollments
 # ================ student profile =============================
 class StudentProfileSerializer(serializers.ModelSerializer):
+    profile_id = serializers.IntegerField(source='id', read_only=True)  # Create a new field for profile_id
     class Meta:
         model = StudentProfile
-        fields = ['id', 'first_name', 'last_name', 'headline', 'biography', 'website', 
+        fields = ['profile_id', 'first_name', 'last_name', 'headline', 'biography', 'website', 
                   'facebook', 'linkedin', 'youtube', 'language', 'profile_picture']
+
 
