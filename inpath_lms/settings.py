@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'teacher',
     'category',
     'payments',
+    'wishlist',
     
 ]
 

@@ -222,3 +222,11 @@ class Lecture(models.Model):
             # If it's already a full URL, return as is
             return self.video_file
         return f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{self.video_file}"
+# ====================== wishlist =====================
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    class Meta:
+        unique_together = ('user', 'course') 
+    def __str__(self):
+        return f"{self.user.username} - {self.course.title}"
