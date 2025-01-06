@@ -67,3 +67,14 @@ class StudentProfileSerializer(serializers.ModelSerializer):
                   'facebook', 'linkedin', 'youtube', 'language', 'profile_picture']
 
 
+class StudentDetailsSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'profile']
+
+    def get_profile(self, obj):
+        # Fetch and serialize the student's profile
+        profile = StudentProfile.objects.filter(user=obj).first()
+        return StudentProfileSerializer(profile).data if profile else None

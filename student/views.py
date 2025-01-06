@@ -9,6 +9,47 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
 from userEx.models import *
 # ============== CBV CURD =============== 
+class StudentDetailsViews(APIView):
+    def get(self, request, user_id=None):
+        """
+        GET all students or a specific student by `user_id`.
+        """
+        if user_id is None:
+            # Fetch all students with their profiles
+            users = User.objects.filter(userrole__role='student')  # Ensure only students are fetched
+            serializer = StudentDetailsSerializer(users, many=True)
+            return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+        # Fetch a single student by user_id
+        user = get_object_or_404(User, id=user_id, userrole__role='student')
+        serializer = StudentDetailsSerializer(user)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, user_id):
+        """
+        Update a student's details and profile by `user_id`.
+        """
+        user = get_object_or_404(User, id=user_id, userrole__role='student')
+        profile = get_object_or_404(StudentProfile, user=user)
+
+        # Serialize user data
+        user_serializer = StudentDetailsSerializer(user, data=request.data, partial=True)
+        # Serialize profile data (if provided)
+        profile_serializer = StudentProfileSerializer(profile, data=request.data.get('profile', {}), partial=True)
+
+        if user_serializer.is_valid() and profile_serializer.is_valid():
+            user_serializer.save()
+            profile_serializer.save()
+            return JsonResponse({
+                "user": user_serializer.data,
+                "profile": profile_serializer.data
+            }, status=status.HTTP_200_OK)
+
+        errors = {
+            "user_errors": user_serializer.errors,
+            "profile_errors": profile_serializer.errors
+        }
+        return JsonResponse(errors, status=status.HTTP_400_BAD_REQUEST)
 # ================= Get student details who enroll to a course =================
 class EnrollmentStudentsView(APIView):
     def get(self, request, course_id):
