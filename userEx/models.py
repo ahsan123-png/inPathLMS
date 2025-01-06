@@ -35,8 +35,6 @@ class InstructorProfile(models.Model):
 #================ Model for Student Profile ===================
 class StudentProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
     headline = models.CharField(max_length=255, null=True, blank=True)
     biography = models.TextField(null=True, blank=True)
     website = models.URLField(null=True, blank=True)
