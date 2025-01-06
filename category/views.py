@@ -1,4 +1,5 @@
 
+from django.shortcuts import get_object_or_404
 import requests
 from bs4 import BeautifulSoup
 from rest_framework.views import APIView
@@ -67,4 +68,11 @@ class TrendingSkillsView(APIView):
             return Response({"trending_skills": trending_skills}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# ================== get all courses by Category id =================
 
+class CourseByCategoryView(APIView):
+    def get(self, request, category_id):
+        category = get_object_or_404(Category, id=category_id)
+        courses = Course.objects.filter(category=category).select_related('instructor').all()
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
