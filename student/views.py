@@ -178,27 +178,37 @@ class ProfilePictureUploadView(APIView):
         if not user_id or not profile_picture:
             return JsonResponse({"error": "User ID and profile picture are required."}, status=400)
         try:
-            student = User.objects.select_related('studentprofile').get(id=user_id)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return JsonResponse({"error": "User not found."}, status=404)
-        try:
-            profile = student.studentprofile
-        except StudentProfile.DoesNotExist:
-            return JsonResponse({"error": "Student profile not found."}, status=404)
-        student_name = f"{profile.first_name}_{profile.last_name}"
-        student_name_slug = slugify(student_name).replace(" ", "_")
+        first_name = user.first_name
+        last_name = user.last_name
+        if user.userrole.role == 'student':
+            try:
+                profile = user.studentprofile
+            except StudentProfile.DoesNotExist:
+                return JsonResponse({"error": "Student profile not found."}, status=404)
+            profile_type = 'student'
+        elif user.userrole.role == 'instructor':
+            try:
+                profile = user.instructorprofile
+            except InstructorProfile.DoesNotExist:
+                return JsonResponse({"error": "Instructor profile not found."}, status=404)
+            profile_type = 'instructor'
+        else:
+            return JsonResponse({"error": "User is neither a student nor an instructor."}, status=400)
+        profile_name = f"{first_name}_{last_name}"
+        profile_name_slug = slugify(profile_name).replace(" ", "_")
         ext = os.path.splitext(profile_picture.name)[-1].lower()
-        new_filename = f"{student_name_slug}_{uuid.uuid4().hex[:8]}{ext}"
-        file_key = f"student_profiles/{new_filename}"
+        new_filename = f"{profile_name_slug}_{uuid.uuid4().hex[:8]}{ext}"
+        file_key = f"{profile_type}_profiles/{new_filename}"
+
         try:
             file_url = upload_to_s3(profile_picture, file_key)
-            if profile.profile_picture:
-                profile.profile_picture = file_url
-            else:
-                profile.profile_picture = file_url
+            profile.profile_picture = file_url
             profile.save()
             return JsonResponse({
-                "user_id": student.id,
+                "user_id": user.id,
                 "profile_picture_url": file_url
             }, status=200)
         except Exception as e:

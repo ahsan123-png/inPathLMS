@@ -11,7 +11,6 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
 from category.serializers import *
-import random
 from userEx.models import *
 import re
 from rest_framework.response import Response
@@ -22,29 +21,18 @@ from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from django.db.models import Prefetch
-from rest_framework.exceptions import PermissionDenied
-
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
         user_id = request.data.get('user')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        if not first_name or not last_name:
-            return Response({"error": "First name and last name are required."}, status=status.HTTP_400_BAD_REQUEST)
-        if not first_name or not last_name:
-            return Response({"error": "First name and last name are required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
             return Response({"error": "User does not have the 'instructor' role"}, status=status.HTTP_400_BAD_REQUEST)
-        user.first_name = first_name
-        user.last_name = last_name
-        user.save()
         serializer = InstructorProfileSerializer(data=request.data)
         if serializer.is_valid():
             profile = serializer.save()
@@ -58,7 +46,6 @@ class InstructorProfileView(APIView):
         except UserRole.DoesNotExist:
             return None
     def get(self, request, user_id=None):
-        """Retrieve instructor profiles by user ID or list all instructors."""
         if user_id:
             try:
                 user = User.objects.get(id=user_id)
@@ -80,7 +67,6 @@ class InstructorProfileView(APIView):
             serializer = InstructorProfileSerializer(profiles, many=True)
             return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
     def put(self, request, user_id):
-        """Update an instructor profile by user ID."""
         try:
             user = User.objects.get(id=user_id)
             user_role = self.get_user_role(user)
@@ -110,7 +96,6 @@ class InstructorProfileView(APIView):
             return JsonResponse(serializer.data, status=status.HTTP_200_OK)
         return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, user_id):
-        """Delete an instructor profile by user ID."""
         try:
             user = User.objects.get(id=user_id)
             user_role = self.get_user_role(user)
@@ -124,64 +109,9 @@ class InstructorProfileView(APIView):
             return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         except InstructorProfile.DoesNotExist:
             return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        user.delete()  # Deletes the user and cascades to delete the profile
+        user.delete()  
         return JsonResponse({"message": "Instructor profile deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-#============== Profile Image =============================
-class UploadProfilePictureView(APIView):
-    parser_classes = (MultiPartParser, FormParser)
-    def post(self, request, *args, **kwargs):
-        user_id = request.data.get('user_id')
-        profile_picture = request.FILES.get('profile_picture')
-        if not user_id or not profile_picture:
-            return JsonResponse({"error": "User ID and profile picture are required."}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return JsonResponse({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-        if not hasattr(user, 'userrole') or user.userrole.role != 'instructor':
-            return JsonResponse({"error": "User does not have the 'instructor' role."}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            profile = InstructorProfile.objects.get(user=user)
-        except InstructorProfile.DoesNotExist:
-            return JsonResponse({"error": "Instructor profile not found."}, status=status.HTTP_404_NOT_FOUND)
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME
-        )
-        file_name = os.path.basename(profile_picture.name)
-        file_key = f"instructor_profiles/{file_name}"
-        try:
-            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, f"media/{file_key}",ExtraArgs={'ACL': 'public-read', 'ContentType': profile_picture.content_type})
-            file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/media/{file_key}"
-            profile.profile_picture = file_url
-            profile.save()
-            return JsonResponse({
-                "user_id": user.id,
-                "profile_picture_url": file_url
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return JsonResponse({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-# =================== upload to S3 =================
-# def upload_to_s3(file, course_title, file_type):
-#     unique_id = uuid.uuid4().hex[:8]  # Generates a unique 8-character ID
-#     course_title_safe = re.sub(r'\W+', '_', course_title).lower()
-#     file_name = f"{course_title_safe}_{unique_id}.{file.name.split('.')[-1]}"
-#     s3_client = boto3.client(
-#         's3',
-#         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-#         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-#         region_name=settings.AWS_S3_REGION_NAME
-#     )
-#     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-#     file_key = f"media/{file_type}/{file_name}"  # Path in S3
-#     try:
-#         s3_client.upload_fileobj(file, bucket_name, file_key, ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type})
-#     except Exception as e:
-#         raise ValidationError(f"File upload to S3 failed: {str(e)}")
-#     file_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{file_key}"
+# =============== S3 uploads =================
 def upload_to_s3(file, folder):
     s3 = boto3.client('s3')
     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
@@ -581,3 +511,69 @@ class CourseApprovalAPIView(APIView):
         course.save()
         serializer = CourseSerializer(course)
         return Response(serializer.data, status=status.HTTP_200_OK)
+# =================== CURD teacher details ==================
+class InstructorDetailView(APIView):
+    def get(self, request, user_id=None):
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id, userrole__role='instructor')
+                profile = InstructorProfile.objects.filter(user=user).first()
+                data = {
+                    "user": {
+                        "user_id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name
+                    },
+                    "profile": {
+                        "bio": profile.bio if profile else None,
+                        "degrees": profile.degrees if profile else None,
+                        "teaching_experience": profile.teaching_experience if profile else None,
+                        "specialization": profile.specialization if profile else None,
+                        "teaching_history": profile.teaching_history if profile else None,
+                        "profile_picture": profile.profile_picture if profile and profile.profile_picture else None
+                    }
+                }
+                return Response(data, status=status.HTTP_200_OK)
+            except User.DoesNotExist:
+                return Response({"error": "Instructor not found"}, status=status.HTTP_404_NOT_FOUND)
+        instructors = User.objects.filter(userrole__role='instructor').select_related('userrole')
+        serializer = InstructorDetailSerializer(instructors, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    def put(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id, userrole__role='instructor')
+            profile, created = InstructorProfile.objects.get_or_create(user=user)
+            user.first_name = request.data.get('first_name', user.first_name)
+            user.last_name = request.data.get('last_name', user.last_name)
+            user.email = request.data.get('email', user.email)
+            user.save()
+            profile.bio = request.data.get('bio', profile.bio)
+            profile.degrees = request.data.get('degrees', profile.degrees)
+            profile.teaching_experience = request.data.get('teaching_experience', profile.teaching_experience)
+            profile.specialization = request.data.get('specialization', profile.specialization)
+            profile.teaching_history = request.data.get('teaching_history', profile.teaching_history)
+            profile.profile_picture = request.data.get('profile_picture', profile.profile_picture)
+            profile.save()
+            user_data = {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email
+            }
+            profile_data = {
+                "bio": profile.bio,
+                "degrees": profile.degrees,
+                "teaching_experience": profile.teaching_experience,
+                "specialization": profile.specialization,
+                "teaching_history": profile.teaching_history,
+                "profile_picture": profile.profile_picture if profile.profile_picture else None
+            }
+            return Response({
+                "message": "Instructor details updated successfully",
+                "user": user_data,
+                "profile": profile_data
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error": "Instructor not found"}, status=status.HTTP_404_NOT_FOUND)

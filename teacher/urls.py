@@ -19,7 +19,6 @@ urlpatterns = [
     #crud
     path('all/profile/', InstructorProfileView.as_view(), name='instructor_profile_list_create'),
     path('profile/<int:user_id>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
-    path('upload-profile-picture/', UploadProfilePictureView.as_view(), name='upload_profile_picture'),
     path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
     path('course/complete/<int:course_id>', CompleteCourseAPIView.as_view(), name='CompleteCourseAPIView'),
@@ -30,5 +29,7 @@ urlpatterns = [
     path('course/enrollment/<int:course_id>/', EnrollStudentAPIView.as_view(), name='EnrollStudentAPIView'),
     path('api/categories-courses/', CetegoryCourseAPIView.as_view(), name='categories-courses'),
     path('admin/course/approve/<int:course_id>/', CourseApprovalAPIView.as_view(), name='approve_course'),
+    path('get/all', InstructorDetailView.as_view(), name='instructor_list'),
+    path('get/<int:user_id>/', InstructorDetailView.as_view(), name='update_instructor'),
 
 ]

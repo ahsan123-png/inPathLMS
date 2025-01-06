@@ -1,11 +1,13 @@
+import os
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-import os
 from django.utils.text import slugify
-import uuid
 from django.conf import settings
 from decimal import Decimal
+from rest_framework.response import Response
+from rest_framework import status
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -27,10 +29,16 @@ class InstructorProfile(models.Model):
     teaching_experience = models.IntegerField(default=0) 
     specialization  = models.TextField(null=True, blank=True)  
     teaching_history = models.TextField(null=True, blank=True) 
-    profile_picture = models.ImageField(upload_to='instructor_profiles/', null=True, blank=True)
+    profile_picture = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return f"Profile of {self.user.username}"
+    @property
+    def profile_picture_url(self):
+        if self.profile_picture.startswith("http"):
+            # If it's already a full URL, return as is
+            return self.profile_picture
+        return f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{self.profile_picture}"
 
 #================ Model for Student Profile ===================
 class StudentProfile(models.Model):

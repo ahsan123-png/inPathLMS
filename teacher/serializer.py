@@ -5,7 +5,7 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     class Meta:
         model = InstructorProfile
-        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
+        fields = ['user_id', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
         # read_only_fields = ['user']
     def get_full_name(self, obj):
     # Access the related User object and return the full name
@@ -79,3 +79,22 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = '__all__'
+
+class InstructorDetailSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+    def get_profile(self, obj):
+        try:
+            profile = InstructorProfile.objects.get(user=obj)
+            return {
+                'bio': profile.bio,
+                'degrees': profile.degrees,
+                'teaching_experience': profile.teaching_experience,
+                'specialization': profile.specialization,
+                'teaching_history': profile.teaching_history,
+                'profile_picture': profile.profile_picture.url if profile.profile_picture else None
+            }
+        except InstructorProfile.DoesNotExist:
+            return None
