@@ -233,4 +233,18 @@ def upload_to_s3(file, file_key):
     except Exception as e:
         raise Exception(f"Failed to upload image: {str(e)}")
 # Refactored ProfilePictureUploadView
-
+# ================= assenment submission api =================
+class AssignmentSubmissionView(APIView):
+    def post(self, request, *args, **kwargs):
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return JsonResponse({"detail": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        request.data['user_id'] = user_id
+        serializer = AssignmentSubmissionSerializer(data=request.data)
+        if serializer.is_valid():
+            submission = serializer.save(user_id=user_id)
+            return JsonResponse({
+                "detail": "Assignment submitted successfully.",
+                "submission_id": submission.id
+            }, status=status.HTTP_201_CREATED)
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

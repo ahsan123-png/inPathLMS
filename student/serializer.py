@@ -1,13 +1,12 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from userEx.models import *
 class StudentProfileSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()  # Add this to get the role
-
     class Meta:
         model = User
         fields = ['id', 'first_name', 'last_name', 'email', 'role']  # Include 'role'
-
     def get_role(self, obj):
         user_role = getattr(obj, 'userrole', None)
         return user_role.role if user_role else None
@@ -65,16 +64,33 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         model = StudentProfile
         fields = ['profile_id', 'headline', 'biography', 'website', 
                   'facebook', 'linkedin', 'youtube', 'language', 'profile_picture']
-
-
 class StudentDetailsSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
-
     class Meta:
         model = User
         fields = ['id', 'first_name', 'last_name', 'email', 'profile']
-
     def get_profile(self, obj):
         # Fetch and serialize the student's profile
         profile = StudentProfile.objects.filter(user=obj).first()
         return StudentProfileSerializer(profile).data if profile else None
+# ================ submit assignment ==============
+class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignmentSubmission
+        fields = ['assignment', 'submission_file', 'user_id']  # Include user_id in the fields
+    def validate(self, attrs):
+        user_id = attrs.get('user_id')
+        assignment = attrs.get('assignment')
+        try:
+            user = User.objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            raise serializers.ValidationError("User does not exist.")
+        user_role = getattr(user, 'userrole', None)
+        if not user_role or user_role.role != 'student':
+            raise serializers.ValidationError("User is not a student.")
+        if not Assignment.objects.filter(id=assignment.id).exists():
+            raise serializers.ValidationError("Assignment does not exist.")
+        enrollment = Enrollment.objects.filter(user=user, course=assignment.section.course).first()
+        if not enrollment:
+            raise serializers.ValidationError("User is not enrolled in the course for this assignment.")
+        return attrs

@@ -10,4 +10,5 @@ urlpatterns = [
     path('create/profile/', StudentProfileView.as_view(), name='student_profile_list_create'), 
     path('create/profile/<int:user_id>/', StudentProfileView.as_view(), name='student-profile-detail'),
     path('upload-profile-picture/', ProfilePictureUploadView.as_view(), name='upload_profile_picture'),
+    path('assignments/submit', AssignmentSubmissionView.as_view(), name='AssignmentSubmissionView'),
 ]
