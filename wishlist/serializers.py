@@ -1,16 +1,19 @@
 from rest_framework import serializers
 from userEx.models import Wishlist
+from rest_framework import serializers
+# ================ serializer ================
 class WishlistSerializer(serializers.ModelSerializer):
+    wishlist_id = serializers.IntegerField(source='id', read_only=True)
+    course = serializers.SerializerMethodField()
     class Meta:
         model = Wishlist
-        fields = ['user', 'course']
-
-    def create(self, validated_data):
-        return Wishlist.objects.create(**validated_data)
-
-    def to_representation(self, instance):
+        fields = ['wishlist_id', 'user', 'course']
+    def get_course(self, obj):
         return {
-            'course': instance.course.title,
-            'course_id': instance.course.id,
-            'course_description': instance.course.description
+            "course_id": obj.course.id,
+            "title": obj.course.title,
+            "category": obj.course.category.name,
+            "subcategory": obj.course.subcategory.name,
+            "price": obj.course.price,
+            "thumbnail": obj.course.thumbnail,
         }

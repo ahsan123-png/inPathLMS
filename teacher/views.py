@@ -232,8 +232,17 @@ class CourseCreateAPIView(APIView):
             thumbnail=thumbnail_url,
             intro_video=intro_video_url
         )
-        serializer = CourseSerializer(course)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_data = { 
+        "course_id": course.id,
+        "title": course.title,
+        "description": course.description,
+        "price": str(course.price),
+        "discount_percentage": str(course.discount_percentage),
+        "thumbnail": course.thumbnail,
+        "intro_video": course.intro_video } 
+        return JsonResponse(response_data, status=status.HTTP_201_CREATED)
+        
+
 # ============== Complete Course =============================
 class CompleteCourseAPIView(APIView):
     def post(self, request, course_id):
