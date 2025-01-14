@@ -1,3 +1,4 @@
+from copyreg import constructor
 import json
 import boto3
 from django.views import View
@@ -20,7 +21,7 @@ from datetime import datetime
 from django.utils.timezone import make_aware
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
-from django.db.models import Prefetch
+from django.db.models import Prefetch   
 # =========== CBV ===================
 #=============== Create Profile  ======================
 class InstructorProfileCreateView(APIView):
@@ -406,13 +407,15 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
 # ============== get all courses by instructor id ==============
 class CourseByInstructorIdView(APIView):
-    def get(self, request, instructor_id):
-        courses = Course.objects.filter(instructor_id=instructor_id)
+    def get(self, request, user_id):
+        user_role = UserRole.objects.filter(user_id=user_id, role='instructor').first()
+        if not user_role:
+            return Response({"error": "This user is not an instructor or does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        courses = Course.objects.filter(instructor=user_role.user).select_related('instructor')
         if not courses.exists():
-            return Response({"error": "No courses found with this instructor ID."}, status=status.HTTP_404_NOT_FOUND)
-        serializers = CourseSerializer(courses, many=True)
-        return Response(serializers.data)
-    
+            return Response({"courses": []}, status=status.HTTP_200_OK)
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)                                                          
 # ================== Get all sections with course iD =================
 class CourseSectionsView(View):
     def get(self, request, course_id):

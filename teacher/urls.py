@@ -19,7 +19,7 @@ urlpatterns = [
     #crud
     path('all/profile/', InstructorProfileView.as_view(), name='instructor_profile_list_create'),
     path('profile/<int:user_id>/', InstructorProfileView.as_view(), name='instructor_profile_detail'),
-    path('get/courses/<int:instructor_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
+    path('get/courses/<int:user_id>', CourseByInstructorIdView.as_view(), name='CourseByInstructorIdView'),
     path('courses/sections/<int:course_id>', CourseSectionsView.as_view(), name='course_sections'),
     path('course/complete/<int:course_id>', CompleteCourseAPIView.as_view(), name='CompleteCourseAPIView'),
     path('api/courses/', CourseCreateAPIView.as_view(), name='CourseCreateAPIView'),

@@ -69,13 +69,12 @@ class EnrolledCoursesAPIView(APIView):
         try:
             enrollments = Enrollment.objects.filter(user_id=student_id)
             if not enrollments.exists():
-                return Response({"message": "No enrolled courses found"}, status=status.HTTP_200_ok)
+                return JsonResponse({"message": "No enrolled courses found"}, status=status.HTTP_200_OK)
             courses = [enrollment.course for enrollment in enrollments]
             serializer = CourseSerializer(courses, many=True)
-            return Response(serializer.data, status= status.HTTP_200_OK)
+            return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error":str(e)}, status=status.HTTP_400_BAD_REQUEST) 
-
+            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 # ====================  enrolled more than one courses student id =================
 class MultiCourseEnrollmentView(APIView):
     def post(self, request):
