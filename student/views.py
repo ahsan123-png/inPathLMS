@@ -8,6 +8,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializer import *
 from userEx.models import *
+from django.http import JsonResponse
+
 # ============== CBV CURD =============== 
 class StudentDetailsViews(APIView):
     def get(self, request, user_id=None):
@@ -80,11 +82,11 @@ class MultiCourseEnrollmentView(APIView):
         serializer = MultiCourseEnrollmentSerializer(data=request.data)
         if serializer.is_valid():
             enrollments = serializer.save()
-            return Response(
+            return JsonResponse(
                 {"message": f"Successfully enrolled in {len(enrollments)} courses."},
                 status=status.HTTP_201_CREATED
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # ==================== student profile ====================
 class StudentProfileView(APIView):
     def get(self, request, user_id=None):
