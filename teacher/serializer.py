@@ -5,7 +5,7 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     class Meta:
         model = InstructorProfile
-        fields = ['user_id', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
+        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
         # read_only_fields = ['user']
     def get_full_name(self, obj):
     # Access the related User object and return the full name
