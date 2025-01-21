@@ -5,7 +5,14 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     class Meta:
         model = InstructorProfile
-        fields = ['user', 'bio', 'degrees', 'teaching_experience', 'specialization', 'teaching_history', 'profile_picture','full_name']
+        fields = ['user',
+        'bio',
+        'degrees',
+        'teaching_experience',
+        'specialization',
+        'teaching_history',
+        'profile_picture',
+        'full_name']
         # read_only_fields = ['user']
     def get_full_name(self, obj):
     # Access the related User object and return the full name
@@ -42,7 +49,12 @@ class LectureSerializer(serializers.ModelSerializer):
     video_file_url = serializers.SerializerMethodField()
     class Meta:
         model = Lecture
-        fields = ['id', 'section', 'title', 'video_file', 'video_file_url']
+        fields = [
+        'id',
+        'section',
+        'title',
+        'video_file',
+        'video_file_url']
     def get_video_file_url(self, obj):
         return obj.video_file_url
 
@@ -80,7 +92,13 @@ class InstructorDetailSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+        fields = [
+        'id',
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'profile']
     def get_profile(self, obj):
         try:
             profile = InstructorProfile.objects.get(user=obj)
