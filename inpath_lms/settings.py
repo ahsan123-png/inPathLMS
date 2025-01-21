@@ -14,6 +14,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
+    'django.contrib.sites',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -25,6 +26,11 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'dj_rest_auth',
+    'social_django',
     'rest_auth',
     'userEx',
     'student',
@@ -33,6 +39,11 @@ INSTALLED_APPS = [
     'payments',
     'wishlist',
     
+]
+SITE_ID = 1
+AUTHENTICATION_BACKENDS = [
+    'social_core.backends.google.GoogleOAuth2',  # Google OAuth2
+    'django.contrib.auth.backends.ModelBackend',  # Default authentication
 ]
 
 MIDDLEWARE = [
@@ -43,7 +54,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
+    'corsheaders.middleware.CorsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'inpath_lms.urls'
@@ -221,3 +233,10 @@ EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_HOST_USER ='info@inpath.us'
 EMAIL_HOST_PASSWORD ='k22#fl13#f{b'
+
+# CCREDENTIALS
+GOOGLE_CLIENT_ID = '86233969464-klee2ulmn31g9fi3jg34t49oum53345r.apps.googleusercontent.com'
+GOOGLE_CLIENT_SECRET = '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'
+GOOGLE_REDIRECT_URI = 'http://127.0.0.1:8000/users/google/callback/'
+GOOGLE_AUTH_SCOPES = ['openid', 'email', 'profile']
+GOOGLE_CLIENT_SECRETS_JSON = 'credentials/client_secrets.json'

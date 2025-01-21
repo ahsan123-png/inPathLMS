@@ -7,7 +7,6 @@ from django.utils.text import slugify
 from django.conf import settings
 from decimal import Decimal
 from rest_framework.response import Response
-from rest_framework import status
 # Create your models here.
 #========= Model for User Roles =============
 class UserRole(models.Model):
@@ -18,7 +17,6 @@ class UserRole(models.Model):
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-
     def __str__(self):
         return f"{self.user.username} - {self.role}"
 #================ Model for Instructor Profile ===================

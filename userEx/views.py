@@ -1,5 +1,8 @@
 import json
-from django.http import HttpResponse
+from django.db import IntegrityError
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import redirect
+import requests
 from .serializer import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,7 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-
+from google_auth_oauthlib.flow import Flow
 #============ Views ====================
 class SignupAPIView(APIView):
     def post(self, request):
@@ -136,3 +139,64 @@ def send_welcome_email(user):
         print(f"Error sending email: {e}")
         return False
     return True
+# ===================== Initiate Google OAuth Flow =================
+@csrf_exempt
+def google_login(request):
+    role = request.GET.get('role')
+    if not role or role not in ['student', 'instructor', 'admin']:
+        return JsonResponse({'error': 'Invalid or missing role'}, status=400)
+    flow = Flow.from_client_secrets_file(
+        settings.GOOGLE_CLIENT_SECRETS_JSON,
+        scopes=['openid', 'email', 'profile'],
+        # redirect_uri=settings.GOOGLE_REDIRECT_URI
+        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
+    )
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    request.session['oauth_state'] = state
+    request.session['user_role'] = role
+    return HttpResponseRedirect(authorization_url)
+# ====================== Handle Google Callback =================
+@csrf_exempt
+def google_callback(request):
+    state = request.session.get('oauth_state')
+    code = request.GET.get('code')
+    role = request.session.get('user_role')  # Retrieve the role from the session
+    if not code:
+        return JsonResponse({'error': 'Authorization code not provided'}, status=400)
+    if not role or role not in ['student', 'instructor', 'admin']:
+        return JsonResponse({'error': 'Invalid or missing role'}, status=400)
+    flow = Flow.from_client_secrets_file(
+        settings.GOOGLE_CLIENT_SECRETS_JSON,
+        scopes=['openid', 'email', 'profile'],
+        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
+    )
+    flow.fetch_token(code=code)
+    credentials = flow.credentials
+    access_token = credentials.token
+    user_info_url = 'https://openidconnect.googleapis.com/v1/userinfo'
+    headers = {'Authorization': f'Bearer {access_token}'}
+    user_info_response = requests.get(user_info_url, headers=headers)
+    if user_info_response.status_code == 200:
+        user_info = user_info_response.json()
+        email = user_info.get('email')
+        first_name = user_info.get('given_name')
+        last_name = user_info.get('family_name')
+        try:
+            user, created = User.objects.get_or_create(
+                username=email,
+                defaults={
+                    'email': email,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                }
+            )
+            if created:
+                UserRole.objects.create(user=user, role=role)
+            return JsonResponse({'user_info': user_info, 'created': created, 'role': role})
+        except IntegrityError:
+            return JsonResponse({'error': 'Failed to create user'}, status=500)
+    else:
+        return JsonResponse({'error': 'Failed to fetch user info'}, status=400)
