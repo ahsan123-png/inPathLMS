@@ -228,3 +228,12 @@ class Wishlist(models.Model):
         unique_together = ('user', 'course') 
     def __str__(self):
         return f"{self.user.username} - {self.course.title}"
+    
+# ===================== add course to cart =====================
+class Cart(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'userrole__role': 'student'})
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    class Meta:
+        unique_together = ('user', 'course')
+    def __str__(self):
+        return f"{self.user.username}'s cart with {self.course.title}"

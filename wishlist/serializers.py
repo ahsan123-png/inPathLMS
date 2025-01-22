@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from userEx.models import Wishlist
+from userEx.models import Wishlist , Cart
 from rest_framework import serializers
 # ================ serializer ================
 class WishlistSerializer(serializers.ModelSerializer):
@@ -17,3 +17,15 @@ class WishlistSerializer(serializers.ModelSerializer):
             "price": obj.course.price,
             "thumbnail": obj.course.thumbnail,
         }
+
+class CartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = ['user', 'course']
+        
+    def validate(self, data):
+        # Ensure that the user is a student
+        user = data.get('user')
+        if not hasattr(user, 'userrole') or user.userrole.role != 'student':
+            raise serializers.ValidationError("User is not a student")
+        return data
