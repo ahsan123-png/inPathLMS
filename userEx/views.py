@@ -152,7 +152,7 @@ def google_login(request):
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile'
         ],
-        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
+        redirect_uri="https://api.inpath.us/users/google/callback/"
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -178,7 +178,7 @@ def google_callback(request):
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile'
         ],
-        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
+        redirect_uri="https://api.inpath.us/users/google/callback/"
     )
     try:
         flow.fetch_token(code=code)
