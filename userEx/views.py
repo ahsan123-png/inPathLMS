@@ -149,7 +149,7 @@ def google_login(request):
         settings.GOOGLE_CLIENT_SECRETS_JSON,
         scopes=['openid', 'email', 'profile'],
         # redirect_uri=settings.GOOGLE_REDIRECT_URI
-        redirect_uri="https://inpath.us/users/google/callback/"
+        redirect_uri="https://api.inpath.us/users/google/callback/"
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -171,7 +171,7 @@ def google_callback(request):
     flow = Flow.from_client_secrets_file(
         settings.GOOGLE_CLIENT_SECRETS_JSON,
         scopes=['openid', 'email', 'profile'],
-        redirect_uri="https://inpath.us/users/google/callback/"
+        redirect_uri="https://api.inpath.us/users/google/callback/"
     )
     flow.fetch_token(code=code)
     credentials = flow.credentials

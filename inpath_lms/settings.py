@@ -237,6 +237,6 @@ EMAIL_HOST_PASSWORD ='k22#fl13#f{b'
 # CCREDENTIALS
 GOOGLE_CLIENT_ID = '86233969464-klee2ulmn31g9fi3jg34t49oum53345r.apps.googleusercontent.com'
 GOOGLE_CLIENT_SECRET = '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'
-GOOGLE_REDIRECT_URI = 'https://inpath.us/users/google/callback/'
+GOOGLE_REDIRECT_URI = 'https://api.inpath.us/users/google/callback/'
 GOOGLE_AUTH_SCOPES = ['openid', 'email', 'profile']
 GOOGLE_CLIENT_SECRETS_JSON = 'credentials/client_secrets.json'
