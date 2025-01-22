@@ -147,9 +147,12 @@ def google_login(request):
         return JsonResponse({'error': 'Invalid or missing role'}, status=400)
     flow = Flow.from_client_secrets_file(
         settings.GOOGLE_CLIENT_SECRETS_JSON,
-        scopes=['openid', 'email', 'profile'],
-        # redirect_uri=settings.GOOGLE_REDIRECT_URI
-        redirect_uri="https://api.inpath.us/users/google/callback/"
+        scopes=[
+            'openid',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile'
+        ],
+        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -165,26 +168,30 @@ def google_callback(request):
     code = request.GET.get('code')
     role = request.session.get('user_role')  # Retrieve the role from the session
     if not code:
-        return JsonResponse({'error': 'Authorization code not provided'}, status=400)
+        return JsonResponse({'error': 'Authorization code not provided', 'state': state, 'role': role}, status=400)
     if not role or role not in ['student', 'instructor', 'admin']:
-        return JsonResponse({'error': 'Invalid or missing role'}, status=400)
+        return JsonResponse({'error': 'Invalid or missing role', 'state': state, 'role': role}, status=400)
     flow = Flow.from_client_secrets_file(
         settings.GOOGLE_CLIENT_SECRETS_JSON,
-        scopes=['openid', 'email', 'profile'],
-        redirect_uri="https://api.inpath.us/users/google/callback/"
+        scopes=[
+            'openid',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile'
+        ],
+        redirect_uri="http://127.0.0.1:8000/users/google/callback/"
     )
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
-    access_token = credentials.token
-    user_info_url = 'https://openidconnect.googleapis.com/v1/userinfo'
-    headers = {'Authorization': f'Bearer {access_token}'}
-    user_info_response = requests.get(user_info_url, headers=headers)
-    if user_info_response.status_code == 200:
-        user_info = user_info_response.json()
-        email = user_info.get('email')
-        first_name = user_info.get('given_name')
-        last_name = user_info.get('family_name')
-        try:
+    try:
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        access_token = credentials.token
+        user_info_url = 'https://openidconnect.googleapis.com/v1/userinfo'
+        headers = {'Authorization': f'Bearer {access_token}'}
+        user_info_response = requests.get(user_info_url, headers=headers)
+        if user_info_response.status_code == 200:
+            user_info = user_info_response.json()
+            email = user_info.get('email')
+            first_name = user_info.get('given_name')
+            last_name = user_info.get('family_name')
             user, created = User.objects.get_or_create(
                 username=email,
                 defaults={
@@ -195,8 +202,15 @@ def google_callback(request):
             )
             if created:
                 UserRole.objects.create(user=user, role=role)
-            return JsonResponse({'user_info': user_info, 'created': created, 'role': role})
-        except IntegrityError:
-            return JsonResponse({'error': 'Failed to create user'}, status=500)
-    else:
-        return JsonResponse({'error': 'Failed to fetch user info'}, status=400)
+            return JsonResponse({
+                'user_info': user_info,
+                'created': created,
+                'role': role,
+                'state': state
+            })
+        else:
+            return JsonResponse({'error': 'Failed to fetch user info', 'state': state, 'role': role}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e), 'state': state, 'role': role}, status=500)
+
+
