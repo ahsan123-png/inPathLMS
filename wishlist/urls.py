@@ -7,4 +7,5 @@ urlpatterns = [
     path('view/<int:user_id>/', WishlistView.as_view(), name='view_wishlist'),
     path('add_to_cart/', AddToCartView.as_view(), name='add_to_cart'),
     path('remove_from_cart/', RemoveFromCartView.as_view(), name='remove_from_cart'),
+    path('view_cart/<int:user_id>/', ViewCartCoursesView.as_view(), name='view_cart_courses'),
 ]

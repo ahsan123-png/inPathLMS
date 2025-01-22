@@ -57,11 +57,17 @@ class WishlistView(ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs.get('user_id')
         if not user_id:
-            return Response({"detail": "Invalid or missing user_id"}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValueError("Invalid or missing user_id")
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise ValueError("User not found")
+        return Wishlist.objects.filter(user=user) 
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Wishlist.objects.filter(user=user)
 # ================== add to Cart ===============
 class AddToCartView(APIView):
@@ -106,3 +112,15 @@ class RemoveFromCartView(APIView):
             return Response({"message": "Course removed from cart"}, status=status.HTTP_200_OK)
         except Cart.DoesNotExist:
             return Response({"error": "Course not found in cart"}, status=status.HTTP_404_NOT_FOUND)
+# ============ view all course in cart ============
+class ViewCartCoursesView(APIView):
+    def get(self, request, *args, **kwargs):
+        user_id = kwargs.get('user_id') 
+        user = get_object_or_404(User.objects.select_related('userrole'), id=user_id)
+        if user.userrole.role != 'student':
+            return Response({"error": "User is not a student"}, status=status.HTTP_400_BAD_REQUEST)
+        cart_items = Cart.objects.filter(user=user).select_related('course')
+        if not cart_items.exists():
+            return Response({"message": "Your cart is empty"}, status=status.HTTP_200_OK)
+        serializer = CartCourseSerializer(cart_items, many=True)
+        return Response({"cart_courses": serializer.data}, status=status.HTTP_200_OK)

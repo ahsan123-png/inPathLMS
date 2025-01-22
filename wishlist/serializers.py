@@ -29,3 +29,18 @@ class CartSerializer(serializers.ModelSerializer):
         if not hasattr(user, 'userrole') or user.userrole.role != 'student':
             raise serializers.ValidationError("User is not a student")
         return data
+class CartCourseSerializer(serializers.ModelSerializer):
+    # Include the relevant course details in the serializer
+    course_id = serializers.IntegerField(source='course.id')
+    title = serializers.CharField(source='course.title')
+    description = serializers.CharField(source='course.description')
+    price = serializers.DecimalField(source='course.price', max_digits=10, decimal_places=2)
+    class Meta:
+        model = Cart
+        fields = [
+        'course_id',
+        'title',
+        'description',
+        'price',
+        
+        ]
